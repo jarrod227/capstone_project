@@ -3,7 +3,7 @@
 
 A hands-free computer cursor control system using **dual-channel EOG** for eye event detection and an **IMU** for head motion tracking. Built as a capstone project demonstrating embedded systems, real-time signal processing, sensor fusion, and machine learning. See [docs/data_flow.md](docs/data_flow.md) for the complete system pipeline.
 
-**Team:** Jiayu Yang, Andrew Xie, Gordon Lin, Nicole Le, Ani Sarker
+**Team:** Jiayu Yang (Jarrod), Andrew Xie, Gordon Lin, Nicole Le, Ani Sarker
 
 ## Demo
 
