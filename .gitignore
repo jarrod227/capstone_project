@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Generated data — regenerate with: python -m scripts.generate_demo_data
+data/raw/*.csv
+!data/raw/.gitkeep
+
+# Trained models — retrain with: python -m scripts.train_model --data ../data/raw
+python/models/*.pkl
+!python/models/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# STM32 build artifacts
+firmware/Core/Obj/
+firmware/Core/Lst/
+firmware/*.o
+firmware/*.elf
+firmware/*.bin
+firmware/*.hex
+firmware/*.map
+
+# Logs
+*.log
