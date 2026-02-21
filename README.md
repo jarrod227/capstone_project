@@ -36,10 +36,12 @@ A hands-free computer cursor control system using **dual-channel EOG** for eye e
 | **Cursor Move** | IMU Gyro X/Y (proportional or state-space, by mode) | Continuous |
 | **Left Click** | Double Blink (two rapid blinks) | Discrete |
 | **Right Click** | Long Blink (eyes closed >=0.4s) | Discrete |
-| **Double Click** | Double Head Nod (two quick nods, gyro_x) | Discrete |
+| **Double Click** | Look Left/Right + Double Head Nod (eog_h + gyro_x) | Freeze + Gesture |
 | **Scroll Up/Down** | Eye Up/Down + Head Up/Down (eog_v + gx) | Fusion |
 | **Browser Back/Fwd** | Eye Left/Right + Head Left/Right (eog_h + gy) | Fusion |
-| **Window Switch** | Head Roll Flick (gyro_z) | Discrete |
+| **Window Switch** | Look Left/Right + Head Roll Flick (eog_h + gyro_z) | Freeze + Gesture |
+
+**Cursor freeze mechanic:** Looking left or right (horizontal EOG) freezes the cursor. While frozen, head nods trigger double click and head rolls trigger window switch. This prevents accidental triggers during normal head movement and eliminates cursor drift during these gestures.
 
 Blink detection uses a 3-state machine analyzing full spike waveforms, not simple thresholds. See [docs/detection.md](docs/detection.md) for signal zones, state diagrams, and parameters.
 
@@ -68,7 +70,7 @@ python -m scripts.train_model --data ../data/raw             # ~15s, 100% CV acc
 
 > Default mode is `threshold`. Hardware port: Windows `COM4`, Linux `/dev/ttyACM0` (Nucleo).
 
-**Simulator controls:** Arrows=move, Space(x2)=left-click, Space(hold)=right-click, N(x2)=double-click, U+Up=scroll-up, D+Down=scroll-down, L+Left=back, R+Right=forward, W=window-switch, Q=quit.
+**Simulator controls:** Arrows=move, Space(x2)=left-click, Space(hold)=right-click, L/R+N(x2)=double-click (look left/right then nod), U+Up=scroll-up, D+Down=scroll-down, L+Left=back, R+Right=forward, L/R+W=window-switch (look left/right then roll), Q=quit.
 
 > **Note:** The simulator generates square-wave EOG signals (instant jumps), which differ from the smooth waveforms used to train the SVM. As a result, `--mode ml` with `--simulate` cannot classify EOG events reliably. Use `--replay CSV` or real hardware for ML mode.
 
@@ -167,11 +169,11 @@ SS_SENSITIVITY = 0.05          # Gyro-to-velocity input gain
 cd python && python -m pytest tests/ -v
 ```
 
-59 tests across 3 files:
+63 tests across 3 files:
 
 | File | Key Verifications |
 |------|-------------------|
-| `test_event_detector.py` — 31 tests | Double blink detected; single blink ignored; long blink fires on release; long blink max duration rejected; sustained close fires once; cooldown prevents re-trigger; sustained gaze detected; transient gaze rejected; head roll flick triggers window switch; held roll ignored; double head nod triggers double click; single nod ignored |
+| `test_event_detector.py` — 35 tests | Double blink detected; single blink ignored; long blink fires on release; long blink max duration rejected; sustained close fires once; cooldown prevents re-trigger; sustained gaze detected; transient gaze rejected; head roll flick triggers window switch (only when cursor frozen); held roll ignored; roll ignored when not frozen; double head nod triggers double click (only when cursor frozen); single nod ignored; nod ignored when not frozen; state reset on unfreeze |
 | `test_signal_processing.py` — 21 tests | Low-pass preserves DC baseline; high frequency attenuated; sliding window keeps most recent samples; Kalman filter tracks constant bias, passes real motion, tracks drift; 3-axis wrapper corrects all axes; feature vector has correct length; state-space velocity decays to ~0 after 200 iterations |
 | `test_ml_pipeline.py` — 7 tests | Training accuracy >80%; model save/load roundtrip succeeds; predictions are valid labels; streaming classifier produces output; blink features clearly separable from idle |
 
