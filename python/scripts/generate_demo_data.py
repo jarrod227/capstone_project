@@ -212,7 +212,7 @@ def generate_head_roll() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]
     gz += _noise(n, 150)
     gyro = np.column_stack([gx, gy, gz])
 
-    labels = ['head_roll'] * n
+    labels = ['idle'] * n  # Head roll is a gyro gesture, not an EOG event
     return eog_v, eog_h, gyro, labels
 
 
