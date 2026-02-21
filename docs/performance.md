@@ -96,11 +96,12 @@ Test each action with real EOG signals. Perform N intentional gestures, count su
 |--------|----------|-----------|-----------------|----------|
 | Double blink → left click | — | — | — | — |
 | Long blink → right click | — | — | — | — |
+| Double click (look L/R + double nod) | — | — | — | — |
 | Scroll up (eye up + head up) | — | — | — | — |
 | Scroll down (eye down + head down) | — | — | — | — |
 | Browser back (eye left + head left) | — | — | — | — |
 | Browser forward (eye right + head right) | — | — | — | — |
-| Window switch (head roll) | — | — | — | — |
+| Window switch (look L/R + head roll) | — | — | — | — |
 | Cursor move (head motion) | — | — | — | — |
 
 **How to measure:**
