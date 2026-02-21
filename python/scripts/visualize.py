@@ -51,8 +51,6 @@ def run_visualization(source, window_seconds: float = 5.0):
     fig.suptitle("EOG Cursor Control - Live Signal Monitor (Dual Channel)")
 
     # Initialize lines
-    time_axis = np.linspace(-window_seconds, 0, window_size)
-
     line_eog_v, = ax1.plot([], [], 'b-', linewidth=0.8, label='Vertical EOG (eog_v)')
     ax1.axhline(y=config.BLINK_THRESHOLD, color='r', linestyle='--',
                 alpha=0.7, label=f'Blink threshold ({config.BLINK_THRESHOLD})')

@@ -22,6 +22,12 @@ def extract_features(window: np.ndarray) -> np.ndarray:
     """
     features = []
 
+    # Cache common statistics (avoid redundant computation)
+    mean = np.mean(window)
+    std = np.std(window)
+    centered = window - mean
+    derivative = np.diff(window)
+
     # --- Time-domain features ---
 
     # Peak-to-peak amplitude
@@ -29,7 +35,6 @@ def extract_features(window: np.ndarray) -> np.ndarray:
     features.append(peak_amplitude)
 
     # Zero-crossing rate (after mean subtraction)
-    centered = window - np.mean(window)
     zero_crossings = np.sum(np.diff(np.sign(centered)) != 0)
     features.append(zero_crossings)
 
@@ -39,29 +44,27 @@ def extract_features(window: np.ndarray) -> np.ndarray:
     features.append(slope)
 
     # Maximum absolute derivative (speed of change)
-    derivative = np.diff(window)
     max_derivative = np.max(np.abs(derivative)) if len(derivative) > 0 else 0
     features.append(max_derivative)
 
     # --- Statistical features ---
 
     # Mean
-    features.append(np.mean(window))
+    features.append(mean)
 
     # Standard deviation
-    features.append(np.std(window))
+    features.append(std)
 
     # Skewness (asymmetry)
-    std = np.std(window)
     if std > 0:
-        skewness = np.mean(((window - np.mean(window)) / std) ** 3)
+        skewness = np.mean((centered / std) ** 3)
     else:
         skewness = 0.0
     features.append(skewness)
 
     # Kurtosis (peakedness)
     if std > 0:
-        kurtosis = np.mean(((window - np.mean(window)) / std) ** 4) - 3
+        kurtosis = np.mean((centered / std) ** 4) - 3
     else:
         kurtosis = 0.0
     features.append(kurtosis)

@@ -45,18 +45,12 @@ def _get_pyautogui():
     return _pyautogui
 
 
-class ThresholdController:
+class _BaseController:
     """
-    Threshold-based cursor control with full action mapping.
+    Shared event detection and action dispatch for all cursor controllers.
 
-    Actions:
-      - Cursor move: IMU gyro_x/y with deadzone
-      - Left click:  Double blink
-      - Right click: Long blink
-      - Scroll:      Eye up/down gaze + head tilt fusion (eog_v + gx)
-      - Back/Fwd:    Eye left/right gaze + head turn fusion (eog_h + gy)
-      - Window switch: Head roll flick  (only while cursor frozen)
-      - Double click: Double head nod   (only while cursor frozen)
+    Subclasses implement _compute_cursor_move() to define how IMU gyro
+    data maps to pixel displacement.
 
     "Cursor frozen" means the user is looking left or right (horizontal
     EOG beyond threshold).  Head roll and double nod are only recognised
@@ -65,7 +59,6 @@ class ThresholdController:
     """
 
     def __init__(self):
-        self.sensitivity = config.CURSOR_SENSITIVITY
         self.deadzone = config.GYRO_DEADZONE
 
         # Event detectors
@@ -81,6 +74,10 @@ class ThresholdController:
         self.last_roll_time = 0.0
         self.last_nod_time = 0.0
 
+    def _compute_cursor_move(self, gx, gy, any_action, gui):
+        """Compute and apply cursor movement. Subclasses must override."""
+        raise NotImplementedError
+
     def update(self, eog_v: int, eog_h: int, gx: int, gy: int, gz: int,
                cursor_frozen_override: bool = False):
         """
@@ -89,7 +86,7 @@ class ThresholdController:
         Coordinate mapping (head motion to screen):
           - Head turn right (gy > 0) → cursor moves right (+dx)
           - Head tilt down  (gx > 0) → cursor moves down  (+dy)
-          
+
         Args:
             cursor_frozen_override: When True, force cursor-frozen state
                 even if eog_h is at baseline.  Used by ML mode to signal
@@ -112,17 +109,7 @@ class ThresholdController:
                       now - self.last_roll_time < config.HEAD_ROLL_SUPPRESS_DURATION or
                       now - self.last_nod_time < config.HEAD_ROLL_SUPPRESS_DURATION)
 
-        dx = 0.0
-        dy = 0.0
-
-        if not any_action:
-            if abs(gy) > self.deadzone:
-                dx = gy * self.sensitivity
-            if abs(gx) > self.deadzone:
-                dy = gx * self.sensitivity
-
-        if dx != 0 or dy != 0:
-            gui.moveRel(dx, dy, _pause=False)
+        self._compute_cursor_move(gx, gy, any_action, gui)
 
         # --- 2. Blink events (double blink → left, long blink → right) ---
         blink_event = self.blink_detector.update(eog_v, now)
@@ -191,7 +178,33 @@ class ThresholdController:
         self.last_nod_time = 0.0
 
 
-class StateSpaceController:
+class ThresholdController(_BaseController):
+    """
+    Threshold-based cursor control with full action mapping.
+
+    Direct proportional cursor movement: pixel displacement is
+    proportional to gyro angular velocity (no inertia).
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.sensitivity = config.CURSOR_SENSITIVITY
+
+    def _compute_cursor_move(self, gx, gy, any_action, gui):
+        dx = 0.0
+        dy = 0.0
+
+        if not any_action:
+            if abs(gy) > self.deadzone:
+                dx = gy * self.sensitivity
+            if abs(gx) > self.deadzone:
+                dy = gx * self.sensitivity
+
+        if dx != 0 or dy != 0:
+            gui.moveRel(dx, dy, _pause=False)
+
+
+class StateSpaceController(_BaseController):
     """
     Physics-based cursor control using a state-space model.
 
@@ -202,18 +215,15 @@ class StateSpaceController:
     - A contains velocity retention (velocity decays exponentially)
     - B maps gyro input to velocity changes
 
-    Uses the same event detectors as ThresholdController for
-    blink/scroll/window-switch actions.
-    
     Head roll and double nod only activate when the cursor is frozen
     (user is looking left or right).
     """
 
     def __init__(self):
+        super().__init__()
         self.velocity_retain = config.SS_VELOCITY_RETAIN
         self.sensitivity = config.SS_SENSITIVITY
         self.dt = config.SS_DT
-        self.deadzone = config.GYRO_DEADZONE
 
         # State: [pos_x, vel_x, pos_y, vel_y]
         self.state = np.zeros(4)
@@ -234,46 +244,7 @@ class StateSpaceController:
             [0,               self.sensitivity]
         ])
 
-        # Event detectors
-        self.blink_detector = BlinkDetector()
-        self.gaze_detector = GazeDetector()
-        self.horizontal_gaze_detector = HorizontalGazeDetector()
-        self.roll_detector = HeadRollDetector()
-        self.nod_detector = DoubleNodDetector()
-
-        # Fusion cooldown state
-        self.last_scroll_time = 0.0
-        self.last_nav_time = 0.0
-        self.last_roll_time = 0.0
-        self.last_nod_time = 0.0
-
-    def update(self, eog_v: int, eog_h: int, gx: int, gy: int, gz: int,
-               cursor_frozen_override: bool = False):
-        """
-        Process one sensor sample through state-space model + event detectors.
-
-        Args:
-            eog_v: Vertical EOG ADC value (12-bit, baseline 2048)
-            eog_h: Horizontal EOG ADC value (12-bit, baseline 2048)
-            gx, gy, gz: Raw gyroscope values
-            cursor_frozen_override: When True, force cursor-frozen state
-                even if eog_h is at baseline.  Used by ML mode.            
-        """
-        now = time.time()
-        gui = _get_pyautogui()
-
-        # --- 1. State-space cursor movement ---
-        # Suppress ALL cursor movement when any action is active
-        gaze_vertical = (eog_v > config.LOOK_UP_THRESHOLD or
-                         eog_v < config.LOOK_DOWN_THRESHOLD)
-        gaze_horizontal = (eog_h > config.LOOK_RIGHT_THRESHOLD or
-                           eog_h < config.LOOK_LEFT_THRESHOLD)
-        cursor_frozen = gaze_horizontal or cursor_frozen_override
-
-        any_action = (gaze_vertical or cursor_frozen or
-                      now - self.last_roll_time < config.HEAD_ROLL_SUPPRESS_DURATION or
-                      now - self.last_nod_time < config.HEAD_ROLL_SUPPRESS_DURATION)
-
+    def _compute_cursor_move(self, gx, gy, any_action, gui):
         if any_action:
             u = np.array([0, 0])
             # Zero velocity to freeze cursor immediately
@@ -296,69 +267,7 @@ class StateSpaceController:
         self.state[0] = 0
         self.state[2] = 0
 
-        # --- 2. Blink events ---
-        blink_event = self.blink_detector.update(eog_v, now)
-
-        if blink_event == EOGEvent.DOUBLE_BLINK:
-            gui.click(_pause=False)
-            logger.info("Double blink → left click")
-        elif blink_event == EOGEvent.LONG_BLINK:
-            gui.click(button='right', _pause=False)
-            logger.info("Long blink → right click")
-
-        # --- 3. Scroll fusion ---
-        gaze_event = self.gaze_detector.update(eog_v, now)
-
-        if gaze_event == EOGEvent.LOOK_UP and gx < -self.deadzone:
-            if now - self.last_scroll_time > config.SCROLL_COOLDOWN:
-                amount = max(1, int(abs(gx) / self.deadzone * config.SCROLL_AMOUNT))
-                gui.scroll(amount, _pause=False)
-                self.last_scroll_time = now
-                logger.info(f"Scroll up {amount} lines (eye up + head up)")
-        elif gaze_event == EOGEvent.LOOK_DOWN and gx > self.deadzone:
-            if now - self.last_scroll_time > config.SCROLL_COOLDOWN:
-                amount = max(1, int(abs(gx) / self.deadzone * config.SCROLL_AMOUNT))
-                gui.scroll(-amount, _pause=False)
-                self.last_scroll_time = now
-                logger.info(f"Scroll down {amount} lines (eye down + head down)")
-
-        # --- 4. Window switch (only while cursor frozen) ---
-        roll_event = self.roll_detector.update(gz, now, cursor_frozen=cursor_frozen)
-        if roll_event == "switch_window":
-            self.last_roll_time = now
-            gui.hotkey('alt', 'tab', _pause=False)
-            logger.info("Head roll → window switch (Alt+Tab)")
-
-        # --- 5. Double click: double head nod (only while cursor frozen) ---
-        nod_event = self.nod_detector.update(gx, now, cursor_frozen=cursor_frozen)
-        if nod_event == "double_click":
-            self.last_nod_time = now
-            gui.doubleClick(_pause=False)
-            logger.info("Double nod → double click")
-
-        # --- 6. Browser back/forward: horizontal gaze + head turn fusion ---
-        horiz_event = self.horizontal_gaze_detector.update(eog_h, now)
-
-        if horiz_event == EOGEvent.LOOK_LEFT and gy < -self.deadzone:
-            if now - self.last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN:
-                gui.hotkey('alt', 'left', _pause=False)
-                self.last_nav_time = now
-                logger.info("Back (eye left + head left)")
-        elif horiz_event == EOGEvent.LOOK_RIGHT and gy > self.deadzone:
-            if now - self.last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN:
-                gui.hotkey('alt', 'right', _pause=False)
-                self.last_nav_time = now
-                logger.info("Forward (eye right + head right)")
-
     def reset(self):
         """Reset all internal state."""
+        super().reset()
         self.state = np.zeros(4)
-        self.blink_detector.reset()
-        self.gaze_detector.reset()
-        self.horizontal_gaze_detector.reset()
-        self.roll_detector.reset()
-        self.nod_detector.reset()
-        self.last_scroll_time = 0.0
-        self.last_nav_time = 0.0
-        self.last_roll_time = 0.0
-        self.last_nod_time = 0.0

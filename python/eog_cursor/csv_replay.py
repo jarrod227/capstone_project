@@ -78,7 +78,7 @@ class CSVReplaySource:
         while True:
             start_time = time.time()
 
-            for idx, row in self.data.iterrows():
+            for sample_num, (_, row) in enumerate(self.data.iterrows()):
                 packet = SensorPacket(
                     timestamp=int(row['timestamp']),
                     eog_v=int(row['eog_v']),
@@ -92,8 +92,7 @@ class CSVReplaySource:
 
                 if self.realtime:
                     # Calculate expected time for next sample
-                    elapsed = idx + 1
-                    expected_time = start_time + elapsed * config.SAMPLE_PERIOD
+                    expected_time = start_time + (sample_num + 1) * config.SAMPLE_PERIOD
                     sleep_time = expected_time - time.time()
                     if sleep_time > 0:
                         time.sleep(sleep_time)

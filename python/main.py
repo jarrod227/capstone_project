@@ -46,10 +46,8 @@ def setup_logging(verbose: bool = False):
     )
 
 
-def run_threshold_mode(source, calibrator=None, kalman=None):
-    """Run cursor control with threshold-based event detection."""
-    controller = ThresholdController()
-
+def run_control_loop(source, controller, calibrator=None, kalman=None):
+    """Run the sensor → filter → controller loop (shared by threshold and statespace modes)."""
     if config.EOG_LOWPASS_ENABLED:
         filter_v = EOGLowPassFilter()
         filter_h = EOGLowPassFilter()
@@ -57,55 +55,38 @@ def run_threshold_mode(source, calibrator=None, kalman=None):
         filter_v = None
         filter_h = None
 
+    for packet in source.stream():
+        eog_v = float(packet.eog_v)
+        eog_h = float(packet.eog_h)
+        if filter_v:
+            eog_v = filter_v.filter_sample(eog_v)
+            eog_h = filter_h.filter_sample(eog_h)
+        gx, gy, gz = packet.gyro_x, packet.gyro_y, packet.gyro_z
+        if kalman:
+            gx, gy, gz = kalman.update(gx, gy, gz)
+        elif calibrator:
+            gx, gy, gz = calibrator.correct(gx, gy, gz)
+        controller.update(eog_v, eog_h, gx, gy, gz)
+
+
+def run_threshold_mode(source, calibrator=None, kalman=None):
+    """Run cursor control with threshold-based event detection."""
     print("Threshold mode active.")
     print(f"  Blink threshold:  {config.BLINK_THRESHOLD}")
     print(f"  Double blink:     2 blinks within {config.DOUBLE_BLINK_WINDOW}s → left click")
     print(f"  Long blink:       hold >={config.LONG_BLINK_MIN_DURATION}s → right click")
     print(f"  Scroll:           eye gaze + head tilt fusion")
     print(f"  Window switch:    head roll flick (gyro_z)")
-
-    for packet in source.stream():
-        eog_v = float(packet.eog_v)
-        eog_h = float(packet.eog_h)
-        if filter_v:
-            eog_v = filter_v.filter_sample(eog_v)
-            eog_h = filter_h.filter_sample(eog_h)
-        gx, gy, gz = packet.gyro_x, packet.gyro_y, packet.gyro_z
-        if kalman:
-            gx, gy, gz = kalman.update(gx, gy, gz)
-        elif calibrator:
-            gx, gy, gz = calibrator.correct(gx, gy, gz)
-        controller.update(eog_v, eog_h, gx, gy, gz)
+    run_control_loop(source, ThresholdController(), calibrator, kalman)
 
 
 def run_statespace_mode(source, calibrator=None, kalman=None):
     """Run cursor control with state-space physics model."""
-    controller = StateSpaceController()
-
-    if config.EOG_LOWPASS_ENABLED:
-        filter_v = EOGLowPassFilter()
-        filter_h = EOGLowPassFilter()
-    else:
-        filter_v = None
-        filter_h = None
-
     print("State-space mode active.")
     print(f"  Velocity retain: {config.SS_VELOCITY_RETAIN}")
     print(f"  Sensitivity:  {config.SS_SENSITIVITY}")
     print(f"  Deadzone:     {config.GYRO_DEADZONE}")
-
-    for packet in source.stream():
-        eog_v = float(packet.eog_v)
-        eog_h = float(packet.eog_h)
-        if filter_v:
-            eog_v = filter_v.filter_sample(eog_v)
-            eog_h = filter_h.filter_sample(eog_h)
-        gx, gy, gz = packet.gyro_x, packet.gyro_y, packet.gyro_z
-        if kalman:
-            gx, gy, gz = kalman.update(gx, gy, gz)
-        elif calibrator:
-            gx, gy, gz = calibrator.correct(gx, gy, gz)
-        controller.update(eog_v, eog_h, gx, gy, gz)
+    run_control_loop(source, StateSpaceController(), calibrator, kalman)
 
 
 def run_ml_mode(source, calibrator=None, kalman=None):
