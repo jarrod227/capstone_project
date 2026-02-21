@@ -55,8 +55,13 @@ class ThresholdController:
       - Right click: Long blink
       - Scroll:      Eye up/down gaze + head tilt fusion (eog_v + gx)
       - Back/Fwd:    Eye left/right gaze + head turn fusion (eog_h + gy)
-      - Window switch: Head roll flick
-      - Double click: Double head nod
+      - Window switch: Head roll flick  (only while cursor frozen)
+      - Double click: Double head nod   (only while cursor frozen)
+
+    "Cursor frozen" means the user is looking left or right (horizontal
+    EOG beyond threshold).  Head roll and double nod are only recognised
+    in this state, which prevents accidental triggers during normal head
+    movement and eliminates cursor drift during nods/rolls.
     """
 
     def __init__(self):
@@ -76,13 +81,19 @@ class ThresholdController:
         self.last_roll_time = 0.0
         self.last_nod_time = 0.0
 
-    def update(self, eog_v: int, eog_h: int, gx: int, gy: int, gz: int):
+    def update(self, eog_v: int, eog_h: int, gx: int, gy: int, gz: int,
+               cursor_frozen_override: bool = False):
         """
         Process one sensor sample and execute actions.
 
         Coordinate mapping (head motion to screen):
           - Head turn right (gy > 0) → cursor moves right (+dx)
           - Head tilt down  (gx > 0) → cursor moves down  (+dy)
+          
+        Args:
+            cursor_frozen_override: When True, force cursor-frozen state
+                even if eog_h is at baseline.  Used by ML mode to signal
+                that the classifier detected horizontal gaze.
         """
         now = time.time()
         gui = _get_pyautogui()
@@ -90,22 +101,14 @@ class ThresholdController:
         # --- 1. Cursor movement from IMU gyro ---
         # Suppress ALL cursor movement when any action is active:
         #   - Eye gaze (vertical/horizontal) = scroll/nav intent
-        #   - Head roll (gz spike) = window switch intent
-        #   - Head nod (gx spike) = double click intent
-        #   - Post-roll/nod window absorbs residual coupled motion
+        #   - Post-roll/nod grace window absorbs residual coupled motion
         gaze_vertical = (eog_v > config.LOOK_UP_THRESHOLD or
                          eog_v < config.LOOK_DOWN_THRESHOLD)
         gaze_horizontal = (eog_h > config.LOOK_RIGHT_THRESHOLD or
                            eog_h < config.LOOK_LEFT_THRESHOLD)
-        head_rolling = abs(gz) > config.HEAD_ROLL_THRESHOLD
-        head_nodding = abs(gx) > config.DOUBLE_NOD_THRESHOLD
-        if head_rolling:
-            self.last_roll_time = now
-        if head_nodding:
-            self.last_nod_time = now
+        cursor_frozen = gaze_horizontal or cursor_frozen_override
 
-        any_action = (gaze_vertical or gaze_horizontal or
-                      head_rolling or head_nodding or
+        any_action = (gaze_vertical or cursor_frozen or
                       now - self.last_roll_time < config.HEAD_ROLL_SUPPRESS_DURATION or
                       now - self.last_nod_time < config.HEAD_ROLL_SUPPRESS_DURATION)
 
@@ -147,15 +150,17 @@ class ThresholdController:
                 self.last_scroll_time = now
                 logger.info(f"Scroll down {amount} lines (eye down + head down)")
 
-        # --- 4. Window switch: head roll flick ---
-        roll_event = self.roll_detector.update(gz, now)
+        # --- 4. Window switch: head roll flick (only while cursor frozen) ---
+        roll_event = self.roll_detector.update(gz, now, cursor_frozen=cursor_frozen)
         if roll_event == "switch_window":
+            self.last_roll_time = now
             gui.hotkey('alt', 'tab', _pause=False)
             logger.info("Head roll → window switch (Alt+Tab)")
 
-        # --- 5. Double click: double head nod ---
-        nod_event = self.nod_detector.update(gx, now)
+        # --- 5. Double click: double head nod (only while cursor frozen) ---
+        nod_event = self.nod_detector.update(gx, now, cursor_frozen=cursor_frozen)
         if nod_event == "double_click":
+            self.last_nod_time = now
             gui.doubleClick(_pause=False)
             logger.info("Double nod → double click")
 
@@ -199,6 +204,9 @@ class StateSpaceController:
 
     Uses the same event detectors as ThresholdController for
     blink/scroll/window-switch actions.
+    
+    Head roll and double nod only activate when the cursor is frozen
+    (user is looking left or right).
     """
 
     def __init__(self):
@@ -239,7 +247,8 @@ class StateSpaceController:
         self.last_roll_time = 0.0
         self.last_nod_time = 0.0
 
-    def update(self, eog_v: int, eog_h: int, gx: int, gy: int, gz: int):
+    def update(self, eog_v: int, eog_h: int, gx: int, gy: int, gz: int,
+               cursor_frozen_override: bool = False):
         """
         Process one sensor sample through state-space model + event detectors.
 
@@ -247,6 +256,8 @@ class StateSpaceController:
             eog_v: Vertical EOG ADC value (12-bit, baseline 2048)
             eog_h: Horizontal EOG ADC value (12-bit, baseline 2048)
             gx, gy, gz: Raw gyroscope values
+            cursor_frozen_override: When True, force cursor-frozen state
+                even if eog_h is at baseline.  Used by ML mode.            
         """
         now = time.time()
         gui = _get_pyautogui()
@@ -257,15 +268,9 @@ class StateSpaceController:
                          eog_v < config.LOOK_DOWN_THRESHOLD)
         gaze_horizontal = (eog_h > config.LOOK_RIGHT_THRESHOLD or
                            eog_h < config.LOOK_LEFT_THRESHOLD)
-        head_rolling = abs(gz) > config.HEAD_ROLL_THRESHOLD
-        head_nodding = abs(gx) > config.DOUBLE_NOD_THRESHOLD
-        if head_rolling:
-            self.last_roll_time = now
-        if head_nodding:
-            self.last_nod_time = now
+        cursor_frozen = gaze_horizontal or cursor_frozen_override
 
-        any_action = (gaze_vertical or gaze_horizontal or
-                      head_rolling or head_nodding or
+        any_action = (gaze_vertical or cursor_frozen or
                       now - self.last_roll_time < config.HEAD_ROLL_SUPPRESS_DURATION or
                       now - self.last_nod_time < config.HEAD_ROLL_SUPPRESS_DURATION)
 
@@ -317,15 +322,17 @@ class StateSpaceController:
                 self.last_scroll_time = now
                 logger.info(f"Scroll down {amount} lines (eye down + head down)")
 
-        # --- 4. Window switch ---
-        roll_event = self.roll_detector.update(gz, now)
+        # --- 4. Window switch (only while cursor frozen) ---
+        roll_event = self.roll_detector.update(gz, now, cursor_frozen=cursor_frozen)
         if roll_event == "switch_window":
+            self.last_roll_time = now
             gui.hotkey('alt', 'tab', _pause=False)
             logger.info("Head roll → window switch (Alt+Tab)")
 
-        # --- 5. Double click: double head nod ---
-        nod_event = self.nod_detector.update(gx, now)
+        # --- 5. Double click: double head nod (only while cursor frozen) ---
+        nod_event = self.nod_detector.update(gx, now, cursor_frozen=cursor_frozen)
         if nod_event == "double_click":
+            self.last_nod_time = now
             gui.doubleClick(_pause=False)
             logger.info("Double nod → double click")
 
