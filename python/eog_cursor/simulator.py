@@ -137,9 +137,9 @@ class HardwareSimulator:
         self._listener.start()
         self._start_time = time.time()
         logger.info("Hardware simulator started.")
-        logger.info("Arrows=move, Space(x2)=left-click, Space(hold)=right-click, N(x2)=double-click")
-        logger.info("U+Up=scroll-up, D+Down=scroll-down, L+Left=back, R+Right=forward")
-        logger.info("W=window-switch, Q=quit")
+        logger.info("Arrows=move, Space(x2)=left-click, Space(hold)=right-click")
+        logger.info("L/R+N(x2)=double-click, U+Up=scroll-up, D+Down=scroll-down")
+        logger.info("L+Left=back, R+Right=forward, L/R+W=window-switch, Q=quit")
 
     def stop(self):
         """Stop keyboard listener."""
