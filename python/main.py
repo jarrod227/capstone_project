@@ -200,7 +200,16 @@ def run_ml_mode(source, calibrator=None, kalman=None):
         # Use last_prediction (not prediction) for suppression — prediction is
         # None for 19/20 samples, but suppression must be continuous.
         # Head roll suppression is handled by the controller internally (from gz).
-        if last_prediction != "idle":
+        #
+        # When ML detects horizontal gaze (look_left/look_right), pass real
+        # gx/gz so the controller's nod/roll detectors can work while the
+        # cursor is frozen via cursor_frozen_override.
+        cursor_frozen = last_prediction in ("look_left", "look_right")
+        if cursor_frozen:
+            # Cursor frozen by override; pass real gx/gz for nod/roll detection
+            cursor_gx = gx
+            cursor_gy = gy
+        elif last_prediction != "idle":
             cursor_gx = 0
             cursor_gy = 0
             # Zero velocity to freeze cursor during action
@@ -212,7 +221,8 @@ def run_ml_mode(source, calibrator=None, kalman=None):
 
         controller.update(
             config.EOG_BASELINE, config.EOG_BASELINE,
-            cursor_gx, cursor_gy, gz
+            cursor_gx, cursor_gy, gz,
+            cursor_frozen_override=cursor_frozen
         )
 
 
@@ -310,10 +320,10 @@ Examples:
     print("    Cursor move:    IMU Gyro X/Y")
     print("    Left click:     Double blink (2 quick blinks)")
     print("    Right click:    Long blink (hold eyes closed)")
-    print("    Double click:   Double head nod (gyro_x)")
+    print("    Double click:   Look left/right → double head nod (cursor frozen + gyro_x)")
     print("    Scroll up/down: Eye gaze + head tilt (fusion)")
     print("    Back/Fwd:       Eye left/right + head turn (fusion)")
-    print("    Window switch:  Head roll flick (gyro_z)")
+    print("    Window switch:  Look left/right → head roll flick (cursor frozen + gyro_z)")
     print()
 
     if args.simulate:
