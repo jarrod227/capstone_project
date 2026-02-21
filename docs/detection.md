@@ -174,16 +174,24 @@ These 10 features are extracted from **both** eog_v and eog_h channels (20 total
 
 The `HeadRollDetector` detects intentional head roll flicks (quick lateral tilts) for window switching (Alt+Tab). It requires the gyro_z spike to **return below threshold within `HEAD_ROLL_MAX_DURATION` (0.3s)** — slow tilts or sustained head positions are ignored.
 
+**Cursor freeze prerequisite:** Head roll is **only active when the cursor is frozen** (user is looking left or right, i.e. eog_h beyond horizontal gaze thresholds). During normal head movement, gyro_z changes are ignored by the detector, preventing accidental window switches. When the cursor is not frozen, the detector's internal state is reset so stale spikes are not carried over.
+
+**Workflow:** Look left/right (cursor freezes) → roll head (window switch fires) → look back to center (cursor unfreezes after a short grace period).
+
 | Parameter | Value | Purpose |
 |-----------|-------|---------|
 | `HEAD_ROLL_THRESHOLD` | 3000 | Minimum \|gz\| for roll detection |
 | `HEAD_ROLL_MAX_DURATION` | 0.3s | gz must return below threshold within this time |
 | `HEAD_ROLL_COOLDOWN` | 1.0s | Prevent re-trigger |
-| `HEAD_ROLL_SUPPRESS_DURATION` | 0.3s | Suppress cursor movement after roll |
+| `HEAD_ROLL_SUPPRESS_DURATION` | 0.3s | Suppress cursor movement after roll (grace period when looking back to center) |
 
 ## Double Nod Detection
 
 The `DoubleNodDetector` detects two quick forward head nods for mouse double-click. Each nod is a gyro_x spike that returns to neutral within `DOUBLE_NOD_MAX_DURATION` (0.3s). Two valid nods within `DOUBLE_NOD_WINDOW` (0.8s) triggers the event.
+
+**Cursor freeze prerequisite:** Double nod is **only active when the cursor is frozen** (user is looking left or right, i.e. eog_h beyond horizontal gaze thresholds). During normal head movement, gyro_x nods are ignored by the detector. This eliminates the cursor drift problem: since the cursor is already frozen before the nod starts, no gx motion is translated into cursor movement. When the cursor is not frozen, the detector's internal state is reset so stale nods are not carried over.
+
+**Workflow:** Move cursor to target → look left/right (cursor freezes) → nod twice (double click fires at frozen cursor position) → look back to center (cursor unfreezes after a short grace period).
 
 This is a **gyro gesture**, not an EOG event — the ML model does not need to classify it.
 
@@ -193,3 +201,4 @@ This is a **gyro gesture**, not an EOG event — the ML model does not need to c
 | `DOUBLE_NOD_MAX_DURATION` | 0.3s | Single nod must be shorter than this |
 | `DOUBLE_NOD_WINDOW` | 0.8s | Two nods within this window = double click |
 | `DOUBLE_NOD_COOLDOWN` | 1.0s | Prevent re-trigger |
+| `DOUBLE_NOD_SUPPRESS_DURATION` | 0.5s | Suppress cursor movement after double click (grace period when looking back to center) |
