@@ -208,24 +208,27 @@ class TestGazeDetector(unittest.TestCase):
 
 
 class TestHeadRollDetector(unittest.TestCase):
-    """Test head roll flick detection from gyro_z."""
+    """Test head roll flick detection from gyro_z.
+
+    Head roll only triggers when cursor_frozen=True (looking left/right).
+    """
 
     def setUp(self):
         self.det = HeadRollDetector()
         self.t = 0.0
 
-    def _flick(self, gz, duration=0.1):
+    def _flick(self, gz, duration=0.1, cursor_frozen=True):
         """Simulate a flick: spike for duration, then return to neutral."""
         # Spike phase
         steps = int(duration / config.SAMPLE_PERIOD)
         for _ in range(max(steps, 1)):
-            self.det.update(gz, self.t)
+            self.det.update(gz, self.t, cursor_frozen=cursor_frozen)
             self.t += config.SAMPLE_PERIOD
         # Return to neutral — trigger happens here
-        return self.det.update(0, self.t)
+        return self.det.update(0, self.t, cursor_frozen=cursor_frozen)
 
     def test_roll_detected(self):
-        """Quick gz spike + return to neutral should trigger."""
+        """Quick gz spike + return to neutral should trigger when frozen."""
         result = self._flick(config.HEAD_ROLL_THRESHOLD + 500, duration=0.1)
         self.assertEqual(result, "switch_window")
 
@@ -258,24 +261,47 @@ class TestHeadRollDetector(unittest.TestCase):
         result = self._flick(-(config.HEAD_ROLL_THRESHOLD + 500), duration=0.1)
         self.assertEqual(result, "switch_window")
 
+    def test_roll_ignored_when_not_frozen(self):
+        """Roll should NOT trigger when cursor is not frozen."""
+        result = self._flick(config.HEAD_ROLL_THRESHOLD + 500, duration=0.1,
+                             cursor_frozen=False)
+        self.assertIsNone(result)
+
+    def test_roll_state_reset_on_unfreeze(self):
+        """Spike started while frozen should be discarded if cursor unfreezes."""
+        gz = config.HEAD_ROLL_THRESHOLD + 500
+        # Start spike while frozen
+        for _ in range(5):
+            self.det.update(gz, self.t, cursor_frozen=True)
+            self.t += config.SAMPLE_PERIOD
+        # Cursor unfreezes mid-spike (state resets)
+        self.det.update(gz, self.t, cursor_frozen=False)
+        self.t += config.SAMPLE_PERIOD
+        # Re-freeze and return to neutral — should NOT trigger (spike was reset)
+        result = self.det.update(0, self.t, cursor_frozen=True)
+        self.assertIsNone(result)
+
 
 class TestDoubleNodDetector(unittest.TestCase):
-    """Test double head nod detection from gyro_x."""
+    """Test double head nod detection from gyro_x.
+
+    Double nod only triggers when cursor_frozen=True (looking left/right).
+    """
 
     def setUp(self):
         self.det = DoubleNodDetector()
         self.t = 0.0
 
-    def _nod(self, gx, duration=0.1):
+    def _nod(self, gx, duration=0.1, cursor_frozen=True):
         """Simulate a single nod: spike for duration, then return to neutral."""
         steps = int(duration / config.SAMPLE_PERIOD)
         for _ in range(max(steps, 1)):
-            self.det.update(gx, self.t)
+            self.det.update(gx, self.t, cursor_frozen=cursor_frozen)
             self.t += config.SAMPLE_PERIOD
-        return self.det.update(0, self.t)
+        return self.det.update(0, self.t, cursor_frozen=cursor_frozen)
 
     def test_double_nod_detected(self):
-        """Two quick nods should trigger double_click."""
+        """Two quick nods should trigger double_click when frozen."""
         self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
         self.t += 0.1  # gap between nods
         result = self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
@@ -329,6 +355,29 @@ class TestDoubleNodDetector(unittest.TestCase):
         self.t += 0.1
         r3 = self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
         self.assertEqual(r3, "double_click")
+
+    def test_nod_ignored_when_not_frozen(self):
+        """Double nod should NOT trigger when cursor is not frozen."""
+        self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1,
+                  cursor_frozen=False)
+        self.t += 0.1
+        result = self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1,
+                           cursor_frozen=False)
+        self.assertIsNone(result)
+
+    def test_nod_state_reset_on_unfreeze(self):
+        """First nod while frozen should be discarded if cursor unfreezes."""
+        # First nod while frozen
+        self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1,
+                  cursor_frozen=True)
+        self.t += 0.05
+        # Cursor unfreezes briefly (resets first_nod_time)
+        self.det.update(0, self.t, cursor_frozen=False)
+        self.t += 0.05
+        # Re-freeze and do second nod — should NOT trigger (first nod was lost)
+        result = self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1,
+                           cursor_frozen=True)
+        self.assertIsNone(result)
 
 
 class TestHorizontalGazeDetector(unittest.TestCase):
