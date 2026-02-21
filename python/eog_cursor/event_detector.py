@@ -9,8 +9,12 @@ Implements a state machine that distinguishes:
   - Look up/down  → used for scroll fusion
   - Look left     → browser back
   - Look right    → browser forward
-  - Head roll     → window switch
-  - Double nod    → double click
+  - Head roll     → window switch  (requires cursor_frozen / looking left or right)
+  - Double nod    → double click   (requires cursor_frozen / looking left or right)
+
+Head roll and double nod only activate when the cursor is frozen (user is
+looking left or right).  This prevents accidental triggers during normal
+head movement and eliminates the cursor-drift problem during nods/rolls.
 
 EOG Signal Model (12-bit ADC, vertical channel):
   Baseline ~2048 | Blink/Up > 2048 | Down < 2048
@@ -242,6 +246,10 @@ class HeadRollDetector:
     A roll flick is a rapid head tilt that returns to neutral quickly.
     If gz stays above threshold longer than HEAD_ROLL_MAX_DURATION,
     the event is discarded (not an intentional flick).
+    
+    Only active when cursor_frozen=True (user is looking left or right).
+    When cursor_frozen=False, internal state is reset so that stale
+    spikes from normal head motion are not carried over.
     """
 
     def __init__(self):
@@ -250,9 +258,15 @@ class HeadRollDetector:
         self._spike_direction = None
         self._suppressed = False  # True after held-too-long, until gz drops
 
-    def update(self, gz: int, now: float = None) -> str | None:
+    def update(self, gz: int, now: float = None, cursor_frozen: bool = False) -> str | None:
         """
         Feed one gyro_z sample.
+
+        Args:
+            gz: Raw gyro_z value.
+            now: Current time (default: time.time()).
+            cursor_frozen: True when cursor is frozen (looking left/right).
+                Only processes roll detection when True.
 
         Returns:
             "switch_window" if roll flick detected, None otherwise.
@@ -260,6 +274,12 @@ class HeadRollDetector:
         if now is None:
             now = time.time()
 
+        if not cursor_frozen:
+            self._spike_start = None
+            self._spike_direction = None
+            self._suppressed = False
+            return None
+      
         above = abs(gz) > config.HEAD_ROLL_THRESHOLD
 
         if above:
@@ -306,6 +326,10 @@ class DoubleNodDetector:
 
     Each nod is a gyro_x spike that returns to neutral within MAX_DURATION.
     Two valid nods within DOUBLE_NOD_WINDOW triggers a double click.
+
+    Only active when cursor_frozen=True (user is looking left or right).
+    When cursor_frozen=False, internal state is reset so that stale
+    spikes from normal head motion are not carried over.    
     """
 
     def __init__(self):
@@ -314,15 +338,27 @@ class DoubleNodDetector:
         self._suppressed = False
         self._first_nod_time = None  # When the first valid nod completed
 
-    def update(self, gx: int, now: float = None) -> str | None:
+    def update(self, gx: int, now: float = None, cursor_frozen: bool = False) -> str | None:
         """
         Feed one gyro_x sample.
+
+        Args:
+            gx: Raw gyro_x value.
+            now: Current time (default: time.time()).
+            cursor_frozen: True when cursor is frozen (looking left/right).
+                Only processes nod detection when True.
 
         Returns:
             "double_click" if double nod detected, None otherwise.
         """
         if now is None:
             now = time.time()
+
+        if not cursor_frozen:
+            self._spike_start = None
+            self._suppressed = False
+            self._first_nod_time = None
+            return None
 
         above = abs(gx) > config.DOUBLE_NOD_THRESHOLD
 
