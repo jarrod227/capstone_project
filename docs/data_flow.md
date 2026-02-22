@@ -181,7 +181,7 @@ main.py ─→ run_ml_mode() (main.py)
                │     raw eog_v + raw eog_h (no filtering — must match training data)
                │     │
                │     ├─→ SlidingWindow (signal_processing.py)
-               │     │     100-sample dual-channel buffer
+               │     │     200-sample dual-channel buffer
                │     │
                │     ├─→ extract_features() (feature_extraction.py)
                │     │     20 features: mean, std, range, slope, energy × 2 ch
@@ -191,8 +191,8 @@ main.py ─→ run_ml_mode() (main.py)
                │     │
                │     └─→ eog_model.pkl (SVM classifier)
                │           predict: idle / blink / double_blink /
-               │                    long_blink / look_up / look_down /
-               │                    look_left / look_right
+               │                    triple_blink / long_blink / look_up /
+               │                    look_down / look_left / look_right
                │           (blink = single blink, trained but no action)
                │
                ├─→ Sensor Fusion (in main.py)
@@ -202,6 +202,7 @@ main.py ─→ run_ml_mode() (main.py)
                │     look_left + gy < -deadzone → browser back
                │     look_right + gy > deadzone → browser forward
                │     double_blink → left click (no fusion needed)
+               │     triple_blink → double click (no fusion needed)
                │     long_blink → right click (no fusion needed)
                │
                └─→ StateSpaceController (cursor_control.py)
