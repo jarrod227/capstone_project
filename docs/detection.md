@@ -25,7 +25,7 @@ eog_v                              eog_v
 
 ## Blink Detection State Machine
 
-The `BlinkDetector` discriminates between double blinks (→ left click) and long blinks (→ right click) using a 3-state machine that analyzes the **temporal pattern** of the signal, not just its amplitude.
+The `BlinkDetector` discriminates between double blinks (→ left click), triple blinks (→ double click), and long blinks (→ right click) using a 4-state machine that analyzes the **temporal pattern** of the signal, not just its amplitude.
 
 ### State Diagram
 
@@ -73,11 +73,34 @@ The `BlinkDetector` discriminates between double blinks (→ left click) and lon
           │   │ IN_BLINK │
           │   │ count=2  │
           │   └────┬─────┘
-          │        │ eog < threshold (2nd blink ended)
+          │        │ eog < threshold (2nd blink ended, valid duration)
+          │        ▼
+          │   ┌─────────────┐
+          │   │ WAIT_THIRD  │
+          │   │(2 blinks,   │
+          │   │ wait 0.6s)  │
+          │   └──┬──────┬───┘
+          │      │      │
+          │      │      │ timeout > 0.6s (no 3rd blink)
+          │      │      ▼
+          │      │  ┌───────────────────┐
+          │      │  │ EMIT DOUBLE_BLINK │
+          │      │  │  (→ left click)   │
+          │      │  └───────┬───────────┘
+          │      │          │
+          │      │      ┌───┘
+          │      │      │
+          │      │ eog > threshold again (3rd spike within 0.6s)
+          │      ▼
+          │   ┌──────────┐
+          │   │ IN_BLINK │
+          │   │ count=3  │
+          │   └────┬─────┘
+          │        │ eog < threshold (3rd blink ended)
           │        ▼
           │  ┌───────────────────┐
-          │  │ EMIT DOUBLE_BLINK │
-          │  │  (→ left click)   │
+          │  │ EMIT TRIPLE_BLINK │
+          │  │  (→ double click) │
           │  └───────────────────┘
           │        │
           └────────┘
@@ -94,13 +117,15 @@ The `BlinkDetector` discriminates between double blinks (→ left click) and lon
 | `LONG_BLINK_MIN_DURATION` | 400ms | Minimum hold time for long blink |
 | `LONG_BLINK_MAX_DURATION` | 2.5s | Maximum hold — beyond this is likely sustained gaze or noise |
 | `DOUBLE_BLINK_COOLDOWN` | 800ms | Prevent re-trigger after double blink |
+| `TRIPLE_BLINK_WINDOW` | 600ms | Maximum gap after 2nd blink for 3rd to count as triple |
+| `TRIPLE_BLINK_COOLDOWN` | 1.0s | Prevent re-trigger after triple blink |
 | `LONG_BLINK_COOLDOWN` | 1.0s | Prevent re-trigger after long blink |
 
 ### Why Not Just Peak Detection?
 
 A simple "eog > 3000" check cannot distinguish:
 - **Blink** (50–250ms spike) vs **long blink** (>=400ms sustained) vs **sustained look up** (seconds-long shift at ~2800)
-- **Single blink** (ignored) vs **double blink** (left click)
+- **Single blink** (ignored) vs **double blink** (left click) vs **triple blink** (double click)
 - **Noise spike** (<50ms) vs **real blink**
 
 The state machine solves this by tracking the **rising edge, duration, and falling edge** of each positive deflection.
@@ -187,11 +212,11 @@ The `HeadRollDetector` detects intentional head roll flicks (quick lateral tilts
 
 ## Double Nod Detection
 
-The `DoubleNodDetector` detects two quick forward head nods for mouse double-click. Each nod is a gyro_x spike that returns to neutral within `DOUBLE_NOD_MAX_DURATION` (0.3s). Two valid nods within `DOUBLE_NOD_WINDOW` (0.8s) triggers the event.
+The `DoubleNodDetector` detects two quick forward head nods for cursor centering. Each nod is a gyro_x spike that returns to neutral within `DOUBLE_NOD_MAX_DURATION` (0.3s). Two valid nods within `DOUBLE_NOD_WINDOW` (0.8s) triggers the event, moving the cursor to the center of the screen.
 
 **Cursor freeze prerequisite:** Double nod is **only active when the cursor is frozen** (user is looking left or right, i.e. eog_h beyond horizontal gaze thresholds). During normal head movement, gyro_x nods are ignored by the detector. This eliminates the cursor drift problem: since the cursor is already frozen before the nod starts, no gx motion is translated into cursor movement. When the cursor is not frozen, the detector's internal state is reset so stale nods are not carried over.
 
-**Workflow:** Move cursor to target → look left/right (cursor freezes) → nod twice (double click fires at frozen cursor position) → look back to center (cursor unfreezes after a short grace period).
+**Workflow:** Look left/right (cursor freezes) → nod twice (cursor centers on screen) → look back to center (cursor unfreezes after a short grace period).
 
 This is a **gyro gesture**, not an EOG event — the ML model does not need to classify it.
 
@@ -199,6 +224,5 @@ This is a **gyro gesture**, not an EOG event — the ML model does not need to c
 |-----------|-------|---------|
 | `DOUBLE_NOD_THRESHOLD` | 3000 | Minimum \|gx\| for nod detection |
 | `DOUBLE_NOD_MAX_DURATION` | 0.3s | Single nod must be shorter than this |
-| `DOUBLE_NOD_WINDOW` | 0.8s | Two nods within this window = double click |
+| `DOUBLE_NOD_WINDOW` | 0.8s | Two nods within this window = center cursor |
 | `DOUBLE_NOD_COOLDOWN` | 1.0s | Prevent re-trigger |
-| `DOUBLE_NOD_SUPPRESS_DURATION` | 0.5s | Suppress cursor movement after double click (grace period when looking back to center) |
