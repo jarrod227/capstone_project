@@ -8,15 +8,14 @@ Implements a state machine that distinguishes:
   - Triple blink  → double click
   - Long blink    → right click
   - Look up/down  → scroll (requires head tilt fusion in controller)
-  - Look left/right → cursor freeze (enables nod/roll while frozen)
+  - Look left/right → cursor freeze (enables nod while frozen)
   - Look left + head turn left  → browser back (requires fusion in controller)
   - Look right + head turn right → browser forward (requires fusion in controller)
-  - Head roll     → window switch  (requires cursor_frozen / looking left or right)
   - Double nod    → center cursor  (requires cursor_frozen / looking left or right)
 
-Head roll and double nod only activate when the cursor is frozen (user is
-looking left or right).  This prevents accidental triggers during normal
-head movement and eliminates the cursor-drift problem during nods/rolls.
+Double nod only activates when the cursor is frozen (user is looking left
+or right).  This prevents accidental triggers during normal head movement
+and eliminates the cursor-drift problem during nods.
 
 EOG Signal Model (12-bit ADC, vertical channel):
   Baseline ~2048 | Blink/Up > 2048 | Down < 2048
@@ -268,87 +267,6 @@ class HorizontalGazeDetector:
     def reset(self):
         self.current_gaze = EOGEvent.NONE
         self.last_trigger_time = -100.0
-
-
-class HeadRollDetector:
-    """
-    Detects head roll flick from IMU gyro_z for window switching.
-
-    A roll flick is a rapid head tilt that returns to neutral quickly.
-    If gz stays above threshold longer than HEAD_ROLL_MAX_DURATION,
-    the event is discarded (not an intentional flick).
-    
-    Only active when cursor_frozen=True (user is looking left or right).
-    When cursor_frozen=False, internal state is reset so that stale
-    spikes from normal head motion are not carried over.
-    """
-
-    def __init__(self):
-        self.last_trigger_time = -100.0  # Allow first event immediately
-        self._spike_start = None  # When gz first exceeded threshold
-        self._spike_direction = None
-        self._suppressed = False  # True after held-too-long, until gz drops
-
-    def update(self, gz: int, now: float = None, cursor_frozen: bool = False) -> str | None:
-        """
-        Feed one gyro_z sample.
-
-        Args:
-            gz: Raw gyro_z value.
-            now: Current time (default: time.time()).
-            cursor_frozen: True when cursor is frozen (looking left/right).
-                Only processes roll detection when True.
-
-        Returns:
-            "switch_window" if roll flick detected, None otherwise.
-        """
-        if now is None:
-            now = time.time()
-
-        if not cursor_frozen:
-            self._spike_start = None
-            self._spike_direction = None
-            self._suppressed = False
-            return None
-      
-        above = abs(gz) > config.HEAD_ROLL_THRESHOLD
-
-        if above:
-            if self._suppressed:
-                # Still held after a held-too-long discard, ignore
-                pass
-            elif self._spike_start is None:
-                # Spike just started
-                self._spike_start = now
-                self._spike_direction = "right" if gz > 0 else "left"
-            elif now - self._spike_start > config.HEAD_ROLL_MAX_DURATION:
-                # Held too long — not a flick, discard
-                self._spike_start = None
-                self._spike_direction = None
-                self._suppressed = True
-        else:
-            if self._suppressed:
-                self._suppressed = False
-            elif self._spike_start is not None:
-                # gz returned below threshold — check if it was a valid flick
-                duration = now - self._spike_start
-                direction = self._spike_direction
-                self._spike_start = None
-                self._spike_direction = None
-
-                if duration <= config.HEAD_ROLL_MAX_DURATION:
-                    if now - self.last_trigger_time > config.HEAD_ROLL_COOLDOWN:
-                        self.last_trigger_time = now
-                        logger.debug(f"Head roll flick detected ({direction})")
-                        return "switch_window"
-
-        return None
-
-    def reset(self):
-        self.last_trigger_time = -100.0
-        self._spike_start = None
-        self._spike_direction = None
-        self._suppressed = False
 
 
 class DoubleNodDetector:
