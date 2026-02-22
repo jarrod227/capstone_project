@@ -78,9 +78,15 @@ python -m scripts.train_model --data ../data/raw             # ~15s, 100% CV acc
 Keyboard overlay controls: Space(x2)=left-click, Space(hold)=right-click, Space(x3)=double-click, U=look-up (scroll fusion with hardware IMU), D=look-down (scroll fusion with hardware IMU), L=look-left (freezes cursor, enables nod/roll from hardware IMU), R=look-right (freezes cursor, enables nod/roll from hardware IMU).
 
 ```bash
-python main.py --port COM4 --mode statespace --keyboard-overlay
-python main.py --port COM4 --mode ml --kb
-python main.py --replay ../data/raw/demo_replay.csv --kb
+# Hardware (--port) × 3 modes
+python main.py --port COM4 --mode threshold   --kb
+python main.py --port COM4 --mode statespace  --kb
+python main.py --port COM4 --mode ml          --kb
+
+# CSV replay (--replay) × 3 modes
+python main.py --replay ../data/raw/demo_replay.csv --mode threshold   --kb
+python main.py --replay ../data/raw/demo_replay.csv --mode statespace  --kb
+python main.py --replay ../data/raw/demo_replay.csv --mode ml          --kb
 ```
 
 > **Note:** The simulator generates square-wave EOG signals (instant jumps), which differ from the smooth waveforms used to train the SVM. As a result, `--mode ml` with `--simulate` cannot classify EOG events reliably. Use `--replay CSV` or real hardware for ML mode.
