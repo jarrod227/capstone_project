@@ -179,7 +179,7 @@ The `HorizontalGazeDetector` operates on the eog_h channel with similar logic bu
 
 ## ML-Based Detection (Alternative)
 
-In `--mode ml`, the SVM classifier replaces the threshold-based state machine. Instead of analyzing edges and durations in real time, it extracts 20 features from a 0.5s sliding window of both EOG channels and classifies the waveform pattern:
+In `--mode ml`, the SVM classifier replaces the threshold-based state machine. Instead of analyzing edges and durations in real time, it extracts 20 features from a 1.0s sliding window of both EOG channels and classifies the waveform pattern:
 
 | Feature | What It Captures |
 |---------|-----------------|
@@ -193,7 +193,7 @@ In `--mode ml`, the SVM classifier replaces the threshold-based state machine. I
 | `rms` | Signal energy |
 | `derivative_variance` | Roughness/regularity of change |
 
-These 10 features are extracted from **both** eog_v and eog_h channels (20 total), allowing the classifier to distinguish all 8 event classes including horizontal gaze directions that are invisible on eog_v alone.
+These 10 features are extracted from **both** eog_v and eog_h channels (20 total), allowing the classifier to distinguish all 9 event classes (including triple blink and horizontal gaze directions that are invisible on eog_v alone).
 
 ## Head Roll Detection
 
