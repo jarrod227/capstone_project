@@ -135,6 +135,7 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
     # Keyboard → ML prediction mapping
     _KB_EVENT_TO_PREDICTION = {
         EOGEvent.DOUBLE_BLINK: "double_blink",
+        EOGEvent.TRIPLE_BLINK: "triple_blink",
         EOGEvent.LONG_BLINK: "long_blink",
         EOGEvent.LOOK_UP: "look_up",
         EOGEvent.LOOK_DOWN: "look_down",
@@ -161,13 +162,8 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
 
         # --- Keyboard overlay: merge into prediction when ML is idle ---
         kb_frozen = False
-        kb_triple = False
         if keyboard_overlay:
             kb_blink, kb_gaze, kb_horiz, kb_frozen = keyboard_overlay.poll(now)
-
-            # Triple blink has no ML equivalent — handle separately
-            if kb_blink == EOGEvent.TRIPLE_BLINK:
-                kb_triple = True
 
             # If ML didn't detect an action, use keyboard event as prediction
             if not prediction or prediction == "idle":
@@ -185,6 +181,11 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
                 if now - last_blink_time > config.DOUBLE_BLINK_COOLDOWN:
                     pyautogui.click(_pause=False)
                     action = "left click"
+                    last_blink_time = now
+            elif prediction == "triple_blink":
+                if now - last_blink_time > config.TRIPLE_BLINK_COOLDOWN:
+                    pyautogui.doubleClick(_pause=False)
+                    action = "double click"
                     last_blink_time = now
             elif prediction == "long_blink":
                 if now - last_blink_time > config.LONG_BLINK_COOLDOWN:
@@ -221,11 +222,6 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
             if action:
                 logging.getLogger(__name__).info(f"ML: {prediction} -> {action}")
 
-        # Handle triple blink (keyboard only — ML doesn't classify this)
-        if kb_triple and now - last_blink_time > config.TRIPLE_BLINK_COOLDOWN:
-            pyautogui.doubleClick(_pause=False)
-            logging.getLogger(__name__).info("KB: triple blink -> double click")
-            last_blink_time = now
 
         # IMU controls cursor via state-space controller.
         # Use last_prediction (not prediction) for suppression — prediction is
