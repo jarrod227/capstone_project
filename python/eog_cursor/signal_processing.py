@@ -1,8 +1,9 @@
 """
-Signal processing utilities for EOG data.
+Signal processing utilities for EOG and gyro data.
 
-Provides low-pass filtering for hardware noise reduction
-and sliding window buffer for ML feature extraction.
+Provides low-pass filtering for hardware noise reduction,
+sliding window buffer for ML feature extraction,
+gyro bias calibration, and Kalman filtering for gyro drift.
 """
 
 import numpy as np
