@@ -56,7 +56,7 @@ Requires a graphical desktop (Windows / macOS / Linux with X11) for cursor contr
 pip install -r requirements.txt
 cd python
 python -m scripts.generate_demo_data --output ../data/raw   # ~10s, deterministic (seed=42)
-python -m scripts.train_model --data ../data/raw             # ~15s, 100% CV accuracy
+python -m scripts.train_model --data ../data/raw             # ~15s, ~98% CV accuracy
 ```
 
 ### 2. Run
@@ -90,6 +90,8 @@ python main.py --port COM4 --mode ml          --kb
 ```
 ├── firmware/                    # STM32 reference firmware (C)
 │   ├── firmware.ioc            # CubeMX project (STM32F303RETx Nucleo-64)
+│   ├── Core/Inc/
+│   │   └── mpu9250.h           # MPU9250 I2C driver header
 │   └── Core/Src/
 │       ├── main.c              # Main loop: dual ADC + I2C + UART @200Hz
 │       └── mpu9250.c           # MPU9250 I2C driver
@@ -145,7 +147,7 @@ Scroll and navigation require **both eye gaze and head motion** to agree:
 
 | Component | Qty | Purpose | Interface |
 |-----------|-----|---------|-----------|
-| STM32 MCU (F4/U5/etc.) | 1 | Data acquisition | USB (UART) |
+| STM32 MCU (F3/F4/U5/etc.) | 1 | Data acquisition | USB (UART) |
 | AD8232 | 2 | EOG analog front-end (V + H) | ADC pins |
 | MPU9250 (or MPU6050) | 1 | IMU head tracking | I2C |
 | Ag/AgCl electrodes | 5 | EOG signal pickup (2 pairs + 1 ref) | AD8232 input |
@@ -168,6 +170,8 @@ KALMAN_R = 500.0                # Kalman measurement noise (gyro sensor noise va
 
 # --- threshold mode only ---
 CURSOR_SENSITIVITY = 0.01      # Direct gyro-to-pixel ratio (no inertia)
+
+# --- threshold & statespace modes ---
 BLINK_THRESHOLD = 3000         # ADC value for blink detection (ML mode uses SVM instead)
 
 # --- statespace & ml modes ---
