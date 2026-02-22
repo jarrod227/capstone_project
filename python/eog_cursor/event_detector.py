@@ -5,12 +5,13 @@ Two EOG channels: vertical (eog_v) for blinks/up/down, horizontal (eog_h) for le
 
 Implements a state machine that distinguishes:
   - Double blink  → left click
+  - Triple blink  → double click
   - Long blink    → right click
   - Look up/down  → used for scroll fusion
   - Look left     → browser back
   - Look right    → browser forward
   - Head roll     → window switch  (requires cursor_frozen / looking left or right)
-  - Double nod    → double click   (requires cursor_frozen / looking left or right)
+  - Double nod    → center cursor  (requires cursor_frozen / looking left or right)
 
 Head roll and double nod only activate when the cursor is frozen (user is
 looking left or right).  This prevents accidental triggers during normal
@@ -82,7 +83,7 @@ class BlinkDetector:
             now: Current time (default: time.time())
 
         Returns:
-            EOGEvent.DOUBLE_BLINK, LONG_BLINK, or NONE
+            EOGEvent.DOUBLE_BLINK, TRIPLE_BLINK, LONG_BLINK, or NONE
         """
         if now is None:
             now = time.time()
