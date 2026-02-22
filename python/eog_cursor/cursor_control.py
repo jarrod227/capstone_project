@@ -4,12 +4,13 @@ Cursor control implementations.
 Action mapping (per hardware capability table):
   - Left Click:     Double blink (two rapid blinks)
   - Right Click:    Long blink (eyes closed >=0.4s)
+  - Double Click:   Triple blink (three rapid blinks)
+  - Center Cursor:  Look left/right + Double Head Nod (cursor frozen + gyro_x)
   - Scroll Up:      Eye Up + Head Up (eye-head sync, eog_v + gx)
   - Scroll Down:    Eye Down + Head Down (eye-head sync, eog_v + gx)
   - Back:           Eye Left + Head Left (eye-head sync, eog_h + gy)
   - Forward:        Eye Right + Head Right (eye-head sync, eog_h + gy)
   - Window Switch:  Head Roll Flick (lateral head tilt, gyro_z)
-  - Double Click:   Double Head Nod (two quick nods, gyro_x)
   - Cursor Move:    IMU Gyro X/Y (angular velocity)
 
 Two controller variants:
@@ -111,12 +112,15 @@ class _BaseController:
 
         self._compute_cursor_move(gx, gy, any_action, gui)
 
-        # --- 2. Blink events (double blink → left, long blink → right) ---
+        # --- 2. Blink events (double → left click, triple → double click, long → right click) ---
         blink_event = self.blink_detector.update(eog_v, now)
 
         if blink_event == EOGEvent.DOUBLE_BLINK:
             gui.click(_pause=False)
             logger.info("Double blink → left click")
+        elif blink_event == EOGEvent.TRIPLE_BLINK:
+            gui.doubleClick(_pause=False)
+            logger.info("Triple blink → double click")
         elif blink_event == EOGEvent.LONG_BLINK:
             gui.click(button='right', _pause=False)
             logger.info("Long blink → right click")
@@ -144,12 +148,13 @@ class _BaseController:
             gui.hotkey('alt', 'tab', _pause=False)
             logger.info("Head roll → window switch (Alt+Tab)")
 
-        # --- 5. Double click: double head nod (only while cursor frozen) ---
+        # --- 5. Center cursor: double head nod (only while cursor frozen) ---
         nod_event = self.nod_detector.update(gx, now, cursor_frozen=cursor_frozen)
-        if nod_event == "double_click":
+        if nod_event == "center_cursor":
             self.last_nod_time = now
-            gui.doubleClick(_pause=False)
-            logger.info("Double nod → double click")
+            screen_w, screen_h = gui.size()
+            gui.moveTo(screen_w // 2, screen_h // 2, _pause=False)
+            logger.info("Double nod → center cursor")
 
         # --- 6. Browser back/forward: horizontal gaze + head turn fusion ---
         horiz_event = self.horizontal_gaze_detector.update(eog_h, now)
@@ -216,7 +221,7 @@ class StateSpaceController(_BaseController):
     - B maps gyro input to velocity changes
 
     Head roll and double nod only activate when the cursor is frozen
-    (user is looking left or right).
+    (user is looking left or right). Double nod centers the cursor.
     """
 
     def __init__(self):
