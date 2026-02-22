@@ -69,6 +69,8 @@ Label keys during recording: `0`=idle `1`=blink `2`=double_blink `3`=triple_blin
 
 Procedure: press label key before gesture → perform gesture → press `0` to return to idle.
 
+> **Note:** The serial port is exclusive — only one process can open it at a time. Close `collect_data` before running `main.py` on the same port.
+
 ### 3. Run
 
 3 modes × 3 data sources — any combination works (`cd python` first):
