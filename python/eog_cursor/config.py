@@ -86,12 +86,6 @@ HORIZONTAL_GAZE_COOLDOWN = 1.0  # seconds between back/fwd triggers
 SCROLL_COOLDOWN = 0.08        # seconds - min interval between scroll events
 SCROLL_AMOUNT = 30            # base scroll clicks per event (scales with head speed)
 
-# --- Window Switch: Head Roll Flick (gyro_z) ---
-HEAD_ROLL_THRESHOLD = 3000    # Raw gyro_z threshold for roll flick detection
-HEAD_ROLL_COOLDOWN = 1.0      # seconds - prevent re-trigger
-HEAD_ROLL_SUPPRESS_DURATION = 0.3   # seconds - suppress cursor after head roll
-HEAD_ROLL_MAX_DURATION = 0.3  # seconds - gz must return below threshold within this time
-
 # --- Center Cursor: Double Head Nod (gyro_x) ---
 DOUBLE_NOD_THRESHOLD = 3000   # Raw gyro_x threshold for nod detection
 DOUBLE_NOD_MAX_DURATION = 0.3 # seconds - single nod must be shorter than this
