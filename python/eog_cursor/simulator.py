@@ -15,7 +15,6 @@ Keyboard controls:
   D + Arrow Down:   Simulate look down + head down → scroll down
   L + Arrow Left:   Simulate look left + head left → browser back
   R + Arrow Right:  Simulate look right + head right → browser forward
-  L/R + W:          Simulate look left/right + head roll flick → window switch
   Q / Escape:       Quit
 
 EOG signal model (12-bit ADC, dual-channel):
@@ -46,7 +45,6 @@ class SimState:
     look_down: bool = False
     look_left: bool = False
     look_right: bool = False
-    head_roll: bool = False
     head_nod: bool = False
     running: bool = True
 
@@ -93,8 +91,6 @@ class HardwareSimulator:
                 self.state.look_left = True
             elif key.char == 'r':
                 self.state.look_right = True
-            elif key.char == 'w':
-                self.state.head_roll = True
             elif key.char == 'n':
                 self.state.head_nod = True
             elif key.char == 'q':
@@ -122,8 +118,6 @@ class HardwareSimulator:
                 self.state.look_left = False
             elif key.char == 'r':
                 self.state.look_right = False
-            elif key.char == 'w':
-                self.state.head_roll = False
             elif key.char == 'n':
                 self.state.head_nod = False
 
@@ -140,7 +134,7 @@ class HardwareSimulator:
         logger.info("Hardware simulator started.")
         logger.info("Arrows=move, Space(x2)=left-click, Space(hold)=right-click")
         logger.info("Space(x3)=double-click, L/R+N(x2)=center-cursor, U+Up=scroll-up, D+Down=scroll-down")
-        logger.info("L+Left=back, R+Right=forward, L/R+W=window-switch, Q=quit")
+        logger.info("L+Left=back, R+Right=forward, Q=quit")
 
     def stop(self):
         """Stop keyboard listener."""
@@ -205,11 +199,7 @@ class HardwareSimulator:
             gx = int(self.state.gyro_x + np.random.normal(0, config.SIM_GYRO_NOISE_STD))
         gy = int(self.state.gyro_y + np.random.normal(0, config.SIM_GYRO_NOISE_STD))
 
-        # Head roll flick → gz spike
-        if self.state.head_roll:
-            gz = int(4000 + np.random.normal(0, 200))
-        else:
-            gz = int(np.random.normal(0, config.SIM_GYRO_NOISE_STD))
+        gz = int(np.random.normal(0, config.SIM_GYRO_NOISE_STD))
 
         return SensorPacket(
             timestamp=elapsed_ms,
