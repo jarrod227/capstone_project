@@ -92,10 +92,10 @@ HEAD_ROLL_COOLDOWN = 1.0      # seconds - prevent re-trigger
 HEAD_ROLL_SUPPRESS_DURATION = 0.3   # seconds - suppress cursor after head roll
 HEAD_ROLL_MAX_DURATION = 0.3  # seconds - gz must return below threshold within this time
 
-# --- Double Click: Double Head Nod (gyro_x) ---
+# --- Center Cursor: Double Head Nod (gyro_x) ---
 DOUBLE_NOD_THRESHOLD = 3000   # Raw gyro_x threshold for nod detection
 DOUBLE_NOD_MAX_DURATION = 0.3 # seconds - single nod must be shorter than this
-DOUBLE_NOD_WINDOW = 0.8       # seconds - two nods within this window = double click
+DOUBLE_NOD_WINDOW = 0.8       # seconds - two nods within this window = center cursor
 DOUBLE_NOD_COOLDOWN = 1.0     # seconds - prevent re-trigger
 
 # --- ML Model ---
