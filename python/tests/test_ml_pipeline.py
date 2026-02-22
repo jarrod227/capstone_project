@@ -22,7 +22,7 @@ from eog_cursor.ml_classifier import EOGClassifier, train_model
 from eog_cursor import config
 
 
-def generate_synthetic_windows(n_per_class=50, window_size=100):
+def generate_synthetic_windows(n_per_class=50, window_size=200):
     """Generate synthetic dual-channel EOG windows for each class."""
     rng = np.random.default_rng(42)
     X_list = []
@@ -37,27 +37,39 @@ def generate_synthetic_windows(n_per_class=50, window_size=100):
         ),
         "blink": (
             lambda: np.concatenate([
-                rng.normal(1500, 30, 40),
-                rng.normal(3500, 200, 20),
-                rng.normal(1500, 30, 40)
+                rng.normal(1500, 30, 80),
+                rng.normal(3500, 200, 30),
+                rng.normal(1500, 30, 90)
             ]),
             baseline_h,
         ),
         "double_blink": (
             lambda: np.concatenate([
+                rng.normal(1500, 30, 40),
+                rng.normal(3500, 200, 25),
+                rng.normal(1500, 30, 40),
+                rng.normal(3400, 200, 25),
+                rng.normal(1500, 30, 70)
+            ]),
+            baseline_h,
+        ),
+        "triple_blink": (
+            lambda: np.concatenate([
                 rng.normal(1500, 30, 20),
-                rng.normal(3500, 200, 15),
-                rng.normal(1500, 30, 15),
-                rng.normal(3400, 200, 15),
-                rng.normal(1500, 30, 35)
+                rng.normal(3500, 200, 24),
+                rng.normal(1500, 30, 30),
+                rng.normal(3400, 200, 24),
+                rng.normal(1500, 30, 30),
+                rng.normal(3400, 200, 24),
+                rng.normal(1500, 30, 48)
             ]),
             baseline_h,
         ),
         "long_blink": (
             lambda: np.concatenate([
-                rng.normal(1500, 30, 20),
-                rng.normal(3300, 150, 60),
-                rng.normal(1500, 30, 20)
+                rng.normal(1500, 30, 40),
+                rng.normal(3300, 150, 120),
+                rng.normal(1500, 30, 40)
             ]),
             baseline_h,
         ),
@@ -133,8 +145,9 @@ class TestMLPipeline(unittest.TestCase):
         """Predictions should be valid class labels."""
         X_scaled = self.scaler.transform(self.X)
         predictions = self.model.predict(X_scaled)
-        valid_labels = {"idle", "blink", "double_blink", "long_blink",
-                        "look_up", "look_down", "look_left", "look_right"}
+        valid_labels = {"idle", "blink", "double_blink", "triple_blink",
+                        "long_blink", "look_up", "look_down", "look_left",
+                        "look_right"}
         for pred in predictions:
             self.assertIn(pred, valid_labels)
 
