@@ -15,7 +15,7 @@ def extract_features(window: np.ndarray) -> np.ndarray:
     Extract classification features from an EOG signal window.
 
     Args:
-        window: 1D array of EOG samples (typically 100 samples = 0.5s)
+        window: 1D array of EOG samples (typically 200 samples = 1.0s)
 
     Returns:
         Feature vector (1D numpy array)
