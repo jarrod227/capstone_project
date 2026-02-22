@@ -77,7 +77,6 @@ class GyroCalibrator:
         samples_x = []
         samples_y = []
         samples_z = []
-        total = self.discard + self.num_samples
         count = 0
 
         for packet in source.stream():
