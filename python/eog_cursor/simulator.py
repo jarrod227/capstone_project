@@ -138,7 +138,7 @@ class HardwareSimulator:
         self._listener.start()
         self._start_time = time.time()
         logger.info("Hardware simulator started.")
-        logger.info("Arrows=move, Space(x2)=left-click, Space(hold)=right-click, Space(x3)=double-click")
+        logger.info("Arrows=move, Space(x2)=left-click, Space(hold)=right-click")
         logger.info("Space(x3)=double-click, L/R+N(x2)=center-cursor, U+Up=scroll-up, D+Down=scroll-down")
         logger.info("L+Left=back, R+Right=forward, L/R+W=window-switch, Q=quit")
 
