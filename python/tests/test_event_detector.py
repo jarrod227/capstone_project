@@ -1,5 +1,5 @@
 """
-Tests for EOG event detection: double blink, long blink, gaze, head roll, double nod.
+Tests for EOG event detection: double blink, triple blink, long blink, gaze, head roll, double nod.
 
 All tests use synthetic time to ensure deterministic behavior.
 """
@@ -18,7 +18,7 @@ from eog_cursor import config
 
 
 class TestBlinkDetector(unittest.TestCase):
-    """Test double blink and long blink detection state machine."""
+    """Test double blink, triple blink, and long blink detection state machine."""
 
     def setUp(self):
         self.det = BlinkDetector()
