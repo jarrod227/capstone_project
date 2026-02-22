@@ -27,7 +27,7 @@ A hands-free computer cursor control system using **dual-channel EOG** for eye e
                                           └──────────────┘
 ```
 
-**How it works:** IMU head motion drives cursor movement (direct proportional in threshold mode, state-space model with velocity decay in statespace mode). A **Kalman filter** tracks gyroscope bias drift in real time, separating true angular velocity from slowly-changing sensor offset without requiring a second sensor. Vertical EOG detects blinks (click) and up/down gaze (scroll). Horizontal EOG detects left/right gaze (back/forward). Scroll and navigation require **both eye gaze and head motion** to agree, preventing false triggers.
+**How it works:** IMU head motion drives cursor movement (direct proportional in threshold mode, state-space model with velocity decay in statespace mode). A **Kalman filter** tracks gyroscope bias drift in real time, separating true angular velocity from slowly-changing sensor offset without requiring a second sensor. Vertical EOG detects blinks (click/double-click) and up/down gaze (scroll). Horizontal EOG detects left/right gaze (back/forward). Triple blink triggers double click. Looking left/right freezes the cursor; double head nod while frozen centers the cursor on screen. Scroll and navigation require **both eye gaze and head motion** to agree, preventing false triggers.
 
 ## Features
 
@@ -36,13 +36,13 @@ A hands-free computer cursor control system using **dual-channel EOG** for eye e
 | **Cursor Move** | IMU Gyro X/Y (proportional or state-space, by mode) | Continuous |
 | **Left Click** | Double Blink (two rapid blinks) | Discrete |
 | **Right Click** | Long Blink (eyes closed >=0.4s) | Discrete |
-| **Double Click** | Look Left/Right + Double Head Nod (eog_h + gyro_x) | Freeze + Gesture |
+| **Double Click** | Triple Blink (three rapid blinks) | Discrete |
+| **Center Cursor** | Look Left/Right + Double Head Nod (eog_h + gyro_x) | Freeze + Gesture |
 | **Scroll Up/Down** | Eye Up/Down + Head Up/Down (eog_v + gx) | Fusion |
 | **Browser Back/Fwd** | Eye Left/Right + Head Left/Right (eog_h + gy) | Fusion |
 | **Window Switch** | Look Left/Right + Head Roll Flick (eog_h + gyro_z) | Freeze + Gesture |
 
-
-**Cursor freeze mechanic:** Looking left or right (horizontal EOG) freezes the cursor. While frozen, head nods trigger double click and head rolls trigger window switch. This prevents accidental triggers during normal head movement and eliminates cursor drift during these gestures.
+**Cursor freeze mechanic:** Looking left or right (horizontal EOG) freezes the cursor. While frozen, head nods center the cursor on screen and head rolls trigger window switch. This prevents accidental triggers during normal head movement and eliminates cursor drift during these gestures.
 
 Blink detection uses a 4-state machine analyzing full spike waveforms, not simple thresholds. See [docs/detection.md](docs/detection.md) for signal zones, state diagrams, and parameters.
 
@@ -71,7 +71,7 @@ python -m scripts.train_model --data ../data/raw             # ~15s, 100% CV acc
 
 > Default mode is `threshold`. Hardware port: Windows `COM4`, Linux `/dev/ttyACM0` (Nucleo).
 
-**Simulator controls:** Arrows=move, Space(x2)=left-click, Space(hold)=right-click, L/R+N(x2)=double-click (look left/right then nod), U+Up=scroll-up, D+Down=scroll-down, L+Left=back, R+Right=forward, L/R+W=window-switch (look left/right then roll), Q=quit.
+**Simulator controls:** Arrows=move, Space(x2)=left-click, Space(hold)=right-click, Space(x3)=double-click, L/R+N(x2)=center-cursor (look left/right then nod), U+Up=scroll-up, D+Down=scroll-down, L+Left=back, R+Right=forward, L/R+W=window-switch (look left/right then roll), Q=quit.
 
 **Keyboard overlay (hardware/replay mode):** Add `--keyboard-overlay` (or `--kb`) to inject EOG events from keyboard while hardware continues streaming sensor data. Keyboard events are processed through independent detectors and merged with hardware events — they do not modify real EOG values. Key mapping: Space=blink, U/D=look up/down, L/R=look left/right (freezes cursor). IMU data still comes from hardware.
 
@@ -184,7 +184,7 @@ cd python && python -m pytest tests/ -v
 
 | File | Key Verifications |
 |------|-------------------|
-| `test_event_detector.py` — 35 tests | Double blink detected; single blink ignored; long blink fires on release; long blink max duration rejected; sustained close fires once; cooldown prevents re-trigger; sustained gaze detected; transient gaze rejected; head roll flick triggers window switch (only when cursor frozen); held roll ignored; roll ignored when not frozen; double head nod triggers double click (only when cursor frozen); single nod ignored; nod ignored when not frozen; state reset on unfreeze |
+| `test_event_detector.py` — 37 tests | Double blink detected; triple blink detected; triple blink window expired; single blink ignored; long blink fires on release; long blink max duration rejected; sustained close fires once; cooldown prevents re-trigger; sustained gaze detected; transient gaze rejected; head roll flick triggers window switch (only when cursor frozen); held roll ignored; roll ignored when not frozen; double head nod triggers center cursor (only when cursor frozen); single nod ignored; nod ignored when not frozen; state reset on unfreeze |
 | `test_keyboard_overlay.py` — 12 tests | Double/triple/long blink from Space; look up/down from U/D keys; look left/right from L/R keys; cursor freeze from L/R; idle produces no events; Space does not produce gaze events |
 | `test_signal_processing.py` — 21 tests | Low-pass preserves DC baseline; high frequency attenuated; sliding window keeps most recent samples; Kalman filter tracks constant bias, passes real motion, tracks drift; 3-axis wrapper corrects all axes; feature vector has correct length; state-space velocity decays to ~0 after 200 iterations |
 | `test_ml_pipeline.py` — 7 tests | Training accuracy >80%; model save/load roundtrip succeeds; predictions are valid labels; streaming classifier produces output; blink features clearly separable from idle |
