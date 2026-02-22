@@ -95,8 +95,9 @@ Test each action with real EOG signals. Perform N intentional gestures, count su
 | Action | Attempts | Successes | False Positives | Accuracy |
 |--------|----------|-----------|-----------------|----------|
 | Double blink → left click | — | — | — | — |
+| Triple blink → double click | — | — | — | — |
 | Long blink → right click | — | — | — | — |
-| Double click (look L/R + double nod) | — | — | — | — |
+| Center cursor (look L/R + double nod) | — | — | — | — |
 | Scroll up (eye up + head up) | — | — | — | — |
 | Scroll down (eye down + head down) | — | — | — | — |
 | Browser back (eye left + head left) | — | — | — | — |
