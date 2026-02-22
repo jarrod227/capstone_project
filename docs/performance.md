@@ -103,7 +103,6 @@ Test each action with real EOG signals. Perform N intentional gestures, count su
 | Scroll down (eye down + head down) | — | — | — | — |
 | Browser back (eye left + head left) | — | — | — | — |
 | Browser forward (eye right + head right) | — | — | — | — |
-| Window switch (look L/R + head roll) | — | — | — | — |
 | Cursor move (head motion) | — | — | — | — |
 
 **How to measure:**
