@@ -17,15 +17,16 @@ The ML classifier uses only EOG features; gyro data is not used for classificati
 However, ~50% of gaze events include correlated head motion to simulate realistic
 fusion scenarios (eye+head triggers scroll/navigation in cursor_control.py).
 
-Signal model:
-  idle:         eog_v ~2048 ± noise, eog_h ~2048 ± noise, gyro ≈ noise
-  blink:        eog_v baseline → spike to ~3500 → back (100-200ms)
-  double_blink: two blinks spaced ~300ms apart (eog_v)
-  long_blink:   sustained high (~3500) for 400-600ms (eog_v)
-  look_up:      eog_v ~2900 sustained (gyro = noise OR gx≈-800 with_head)
-  look_down:    eog_v ~1000 sustained (gyro = noise OR gx≈+800 with_head)
-  look_left:    eog_h ~1000 sustained (gyro = noise OR gy≈-800 with_head)
-  look_right:   eog_h ~2900 sustained (gyro = noise OR gy≈+800 with_head)
+Signal model (9 classes):
+  idle:          eog_v ~2048 ± noise, eog_h ~2048 ± noise, gyro ≈ noise
+  blink:         eog_v baseline → spike to ~3500 → back (100-200ms)
+  double_blink:  two blinks spaced ~300ms apart (eog_v)
+  triple_blink:  three blinks spaced ~250ms apart (eog_v)
+  long_blink:    sustained high (~3500) for 400-600ms (eog_v)
+  look_up:       eog_v ~2900 sustained (gyro = noise OR gx≈-800 with_head)
+  look_down:     eog_v ~1000 sustained (gyro = noise OR gx≈+800 with_head)
+  look_left:     eog_h ~1000 sustained (gyro = noise OR gy≈-800 with_head)
+  look_right:    eog_h ~2900 sustained (gyro = noise OR gy≈+800 with_head)
 
 Usage:
     python -m scripts.generate_demo_data
