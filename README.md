@@ -73,10 +73,13 @@ python -m scripts.train_model --data ../data/raw             # ~15s, 100% CV acc
 
 **Simulator controls:** Arrows=move, Space(x2)=left-click, Space(hold)=right-click, Space(x3)=double-click, L/R+N(x2)=center-cursor (look left/right then nod), U+Up=scroll-up, D+Down=scroll-down, L+Left=back, R+Right=forward, L/R+W=window-switch (look left/right then roll), Q=quit.
 
-**Keyboard overlay (hardware/replay mode):** Add `--keyboard-overlay` (or `--kb`) to inject EOG events from keyboard while hardware continues streaming sensor data. Keyboard events are processed through independent detectors and merged with hardware events — they do not modify real EOG values. Key mapping: Space=blink, U/D=look up/down, L/R=look left/right (freezes cursor). IMU data still comes from hardware.
+**Keyboard overlay (hardware/replay mode):** Add `--keyboard-overlay` (or `--kb`) to inject EOG events from keyboard while hardware continues streaming sensor data. Keyboard events are processed through independent detectors and merged with hardware events — they do not modify real EOG values. IMU data still comes from hardware.
+
+Keyboard overlay controls: Space(x2)=left-click, Space(hold)=right-click, Space(x3)=double-click, U=look-up (scroll fusion with hardware IMU), D=look-down (scroll fusion with hardware IMU), L=look-left (freezes cursor, enables nod/roll from hardware IMU), R=look-right (freezes cursor, enables nod/roll from hardware IMU).
 
 ```bash
 python main.py --port COM4 --mode statespace --keyboard-overlay
+python main.py --port COM4 --mode ml --kb
 python main.py --replay ../data/raw/demo_replay.csv --kb
 ```
 
