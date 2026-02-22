@@ -87,7 +87,6 @@ def run_threshold_mode(source, calibrator=None, kalman=None, keyboard_overlay=No
     print(f"  Triple blink:     3 blinks within {config.TRIPLE_BLINK_WINDOW}s → double click")
     print(f"  Long blink:       hold >={config.LONG_BLINK_MIN_DURATION}s → right click")
     print(f"  Scroll:           eye gaze + head tilt fusion")
-    print(f"  Window switch:    head roll flick (gyro_z)")
     run_control_loop(source, ThresholdController(keyboard_overlay), calibrator, kalman)
 
 
@@ -225,14 +224,13 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
         # IMU controls cursor via state-space controller.
         # Use last_prediction (not prediction) for suppression — prediction is
         # None for 19/20 samples, but suppression must be continuous.
-        # Head roll suppression is handled by the controller internally (from gz).
         #
         # When ML detects horizontal gaze (look_left/look_right), pass real
-        # gx/gz so the controller's nod/roll detectors can work while the
-        # cursor is frozen via cursor_frozen_override.
+        # gx so the controller's nod detector can work while the cursor is
+        # frozen via cursor_frozen_override.
         cursor_frozen = last_prediction in ("look_left", "look_right") or kb_frozen
         if cursor_frozen:
-            # Cursor frozen by override; pass real gx/gz for nod/roll detection
+            # Cursor frozen by override; pass real gx for nod detection
             cursor_gx = gx
             cursor_gy = gy
         elif last_prediction not in ("idle", "blink"):
@@ -357,7 +355,6 @@ Examples:
     print("    Center cursor:  Look left/right → double head nod (cursor frozen + gyro_x)")
     print("    Scroll up/down: Eye gaze + head tilt (fusion)")
     print("    Back/Fwd:       Eye left/right + head turn (fusion)")
-    print("    Window switch:  Look left/right → head roll flick (cursor frozen + gyro_z)")
     print()
 
     if args.simulate:
@@ -371,7 +368,6 @@ Examples:
         print("    D + Arrow Down  → look down + head down (scroll down)")
         print("    L + Arrow Left  → look left + head left (browser back)")
         print("    R + Arrow Right → look right + head right (browser fwd)")
-        print("    L/R + W          → look left/right + head roll (window switch)")
         print("    Q / Escape      → quit")
         print()
 
@@ -382,8 +378,8 @@ Examples:
         print("    Space (tap x3)  → triple blink (double click)")
         print("    U               → look up  (scroll fusion with hardware head tilt)")
         print("    D               → look down (scroll fusion with hardware head tilt)")
-        print("    L               → look left  (freezes cursor, enables nod/roll)")
-        print("    R               → look right (freezes cursor, enables nod/roll)")
+        print("    L               → look left  (freezes cursor, enables nod)")
+        print("    R               → look right (freezes cursor, enables nod)")
         print()
 
     print("  Press Ctrl+C to stop.")
