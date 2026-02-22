@@ -11,8 +11,9 @@ Usage:
 
 Controls:
     0 = idle          1 = blink         2 = double_blink
-    3 = long_blink    4 = look_up       5 = look_down
-    6 = look_left     7 = look_right    ESC = stop and save
+    3 = triple_blink  4 = long_blink    5 = look_up
+    6 = look_down     7 = look_left     8 = look_right
+    ESC = stop and save
 
 Labeling procedure:
     The subject presses a label key BEFORE performing the gesture,
@@ -40,11 +41,12 @@ LABEL_KEYS = {
     '0': 'idle',
     '1': 'blink',
     '2': 'double_blink',
-    '3': 'long_blink',
-    '4': 'look_up',
-    '5': 'look_down',
-    '6': 'look_left',
-    '7': 'look_right',
+    '3': 'triple_blink',
+    '4': 'long_blink',
+    '5': 'look_up',
+    '6': 'look_down',
+    '7': 'look_left',
+    '8': 'look_right',
 }
 
 
@@ -82,8 +84,8 @@ def run_collection(source, output_path: str):
     print("=" * 60)
     print("EOG Data Collection")
     print("=" * 60)
-    print("Label keys: 0=idle 1=blink 2=double_blink 3=long_blink")
-    print("            4=up 5=down 6=left 7=right")
+    print("Label keys: 0=idle 1=blink 2=double_blink 3=triple_blink")
+    print("            4=long_blink 5=up 6=down 7=left 8=right")
     print("Tip: press label key BEFORE gesture, press 0 after.")
     print(f"Output: {output_path}")
     print("Press ESC to stop.\n")
