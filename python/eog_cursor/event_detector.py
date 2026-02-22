@@ -34,12 +34,14 @@ class BlinkState(Enum):
     IDLE = auto()           # Waiting for EOG to rise above threshold
     IN_BLINK = auto()       # EOG is above threshold (blink in progress)
     WAIT_SECOND = auto()    # One blink ended, waiting for potential second blink
+    WAIT_THIRD = auto()     # Two blinks ended, waiting for potential third blink
 
 
 class EOGEvent(Enum):
     """Discrete events detected from EOG + IMU."""
     NONE = auto()
     DOUBLE_BLINK = auto()   # → left click
+    TRIPLE_BLINK = auto()   # → double click
     LONG_BLINK = auto()     # → right click
     LOOK_UP = auto()        # → scroll fusion component
     LOOK_DOWN = auto()      # → scroll fusion component
@@ -49,7 +51,7 @@ class EOGEvent(Enum):
 
 class BlinkDetector:
     """
-    Detects double-blink and long-blink patterns from raw EOG values.
+    Detects double-blink, triple-blink, and long-blink patterns from raw EOG values.
 
     State machine:
       IDLE → (EOG > threshold) → IN_BLINK
@@ -58,7 +60,10 @@ class BlinkDetector:
       IN_BLINK → (EOG < threshold, >2.5s) → too long, discard → IDLE
       WAIT_SECOND → (EOG > threshold within window) → IN_BLINK (2nd)
       WAIT_SECOND → (timeout) → ignore single blink → IDLE
-      IN_BLINK (2nd) → (EOG < threshold) → emit DOUBLE_BLINK → IDLE
+      IN_BLINK (2nd) → (EOG < threshold, valid) → WAIT_THIRD
+      WAIT_THIRD → (EOG > threshold within window) → IN_BLINK (3rd)
+      WAIT_THIRD → (timeout) → emit DOUBLE_BLINK → IDLE
+      IN_BLINK (3rd) → (EOG < threshold) → emit TRIPLE_BLINK → IDLE
     """
 
     def __init__(self):
@@ -101,15 +106,22 @@ class BlinkDetector:
                 if duration < config.BLINK_MIN_DURATION:
                     # Too short, probably noise
                     self.state = BlinkState.IDLE
-                elif self.blink_count >= 2:
-                    # Second blink ended → double blink!
+                elif self.blink_count >= 3:
+                    # Third blink ended → triple blink!
                     if duration <= config.BLINK_MAX_DURATION:
-                        if now - self.last_event_time > config.DOUBLE_BLINK_COOLDOWN:
+                        if now - self.last_event_time > config.TRIPLE_BLINK_COOLDOWN:
                             self.state = BlinkState.IDLE
                             self.last_event_time = now
-                            logger.debug("Double blink detected")
-                            return EOGEvent.DOUBLE_BLINK
+                            logger.debug("Triple blink detected")
+                            return EOGEvent.TRIPLE_BLINK
                     self.state = BlinkState.IDLE
+                elif self.blink_count >= 2:
+                    # Second blink ended → wait for potential third
+                    if duration <= config.BLINK_MAX_DURATION:
+                        self.blink_end_time = now
+                        self.state = BlinkState.WAIT_THIRD
+                    else:
+                        self.state = BlinkState.IDLE
                 elif duration >= config.LONG_BLINK_MIN_DURATION:
                     # Long blink (right click) — fires on release
                     if duration <= config.LONG_BLINK_MAX_DURATION:
@@ -138,6 +150,23 @@ class BlinkDetector:
                 self.blink_count = 2
             elif elapsed >= config.DOUBLE_BLINK_WINDOW:
                 # Timeout - was just a single blink, ignore it
+                self.state = BlinkState.IDLE
+
+        elif self.state == BlinkState.WAIT_THIRD:
+            elapsed = now - self.blink_end_time
+
+            if is_high and elapsed < config.TRIPLE_BLINK_WINDOW:
+                # Third blink started!
+                self.state = BlinkState.IN_BLINK
+                self.blink_start_time = now
+                self.blink_count = 3
+            elif elapsed >= config.TRIPLE_BLINK_WINDOW:
+                # Timeout - was a double blink (no third blink came)
+                if now - self.last_event_time > config.DOUBLE_BLINK_COOLDOWN:
+                    self.last_event_time = now
+                    self.state = BlinkState.IDLE
+                    logger.debug("Double blink detected")
+                    return EOGEvent.DOUBLE_BLINK
                 self.state = BlinkState.IDLE
 
         return EOGEvent.NONE
@@ -322,14 +351,14 @@ class HeadRollDetector:
 
 class DoubleNodDetector:
     """
-    Detects double head nod (two quick forward nods) from gyro_x for double click.
+    Detects double head nod (two quick forward nods) from gyro_x for centering cursor.
 
     Each nod is a gyro_x spike that returns to neutral within MAX_DURATION.
-    Two valid nods within DOUBLE_NOD_WINDOW triggers a double click.
+    Two valid nods within DOUBLE_NOD_WINDOW triggers cursor centering.
 
     Only active when cursor_frozen=True (user is looking left or right).
     When cursor_frozen=False, internal state is reset so that stale
-    spikes from normal head motion are not carried over.    
+    spikes from normal head motion are not carried over.
     """
 
     def __init__(self):
@@ -349,7 +378,7 @@ class DoubleNodDetector:
                 Only processes nod detection when True.
 
         Returns:
-            "double_click" if double nod detected, None otherwise.
+            "center_cursor" if double nod detected, None otherwise.
         """
         if now is None:
             now = time.time()
@@ -386,8 +415,8 @@ class DoubleNodDetector:
                                 and now - self.last_trigger_time > config.DOUBLE_NOD_COOLDOWN):
                             self._first_nod_time = None
                             self.last_trigger_time = now
-                            logger.debug("Double nod detected → double click")
-                            return "double_click"
+                            logger.debug("Double nod detected → center cursor")
+                            return "center_cursor"
                         else:
                             # Window expired or in cooldown, this nod becomes the new first
                             self._first_nod_time = now
