@@ -15,6 +15,7 @@ Trained on real EOG sessions, evaluated with 5-fold cross-validation (not traini
 | idle | — | — | — | — |
 | blink | — | — | — | — |
 | double_blink | — | — | — | — |
+| triple_blink | — | — | — | — |
 | long_blink | — | — | — | — |
 | look_up | — | — | — | — |
 | look_down | — | — | — | — |
@@ -55,7 +56,7 @@ Time from serial sample arrival to pyautogui action execution.
 |-----------|---------|-------|
 | Serial read + parse | — ms | `readline()` + `split(",")` |
 | EOG low-pass filter | — ms | Per-sample IIR |
-| Feature extraction | — ms | 20 features from 100-sample window |
+| Feature extraction | — ms | 20 features from 200-sample window |
 | SVM prediction | — ms | `model.predict()` on 1 feature vector |
 | State-space cursor update | — ms | 4x4 matrix multiply |
 | pyautogui action | — ms | OS mouse/keyboard API |
