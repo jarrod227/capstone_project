@@ -106,6 +106,7 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │
                ├─→ BlinkDetector (event_detector.py)
                │     eog_v → DOUBLE_BLINK → left click
+               │     eog_v → TRIPLE_BLINK → double click
                │     eog_v → LONG_BLINK   → right click
                │
                ├─→ GazeDetector (event_detector.py)
@@ -119,7 +120,7 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │     ⚡ Only active when cursor_frozen (looking left/right)
                │
                └─→ DoubleNodDetector (event_detector.py)
-                     gx → double click (two quick nods)
+                     gx → center cursor (two quick nods)
                      ⚡ Only active when cursor_frozen (looking left/right)
                                 │
                                 ▼
@@ -146,6 +147,7 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │
                ├─→ BlinkDetector (event_detector.py)
                │     eog_v → DOUBLE_BLINK → left click
+               │     eog_v → TRIPLE_BLINK → double click
                │     eog_v → LONG_BLINK   → right click
                │
                ├─→ GazeDetector (event_detector.py)
@@ -159,7 +161,7 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │     gz → Alt+Tab window switch
                │
                └─→ DoubleNodDetector (event_detector.py)
-                     gx → double click (two quick nods)
+                     gx → center cursor (two quick nods)
                      ⚡ Only active when cursor_frozen (looking left/right)
                                 │
                                 ▼
