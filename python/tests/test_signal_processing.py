@@ -1,8 +1,8 @@
 """
 Tests for signal processing modules.
 
-Verifies low-pass filter, sliding window operation, feature extraction,
-and state-space controller math. Can be run without hardware.
+Verifies low-pass filter, sliding window operation, Kalman filter,
+feature extraction, and state-space controller math. Can be run without hardware.
 """
 
 import sys
