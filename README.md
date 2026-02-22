@@ -82,8 +82,6 @@ python main.py --replay ../data/raw/demo_replay.csv --kb
 
 > **Note:** The simulator generates square-wave EOG signals (instant jumps), which differ from the smooth waveforms used to train the SVM. As a result, `--mode ml` with `--simulate` cannot classify EOG events reliably. Use `--replay CSV` or real hardware for ML mode.
 
-> **Note:** Triple blink (double click) is not available in ML mode from hardware EOG — the SVM model does not classify triple blink patterns. Use threshold or statespace mode for hardware triple-blink support, or add `--keyboard-overlay` to inject triple blink via keyboard in ML mode.
-
 ## Project Structure
 
 ```
