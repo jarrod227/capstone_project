@@ -62,6 +62,10 @@ BLINK_MAX_DURATION = 0.25     # seconds - max duration for a normal blink
 DOUBLE_BLINK_WINDOW = 0.6     # seconds - two blinks within this window = double blink
 DOUBLE_BLINK_COOLDOWN = 0.8   # seconds - prevent re-trigger after double blink
 
+# --- Triple Blink → Double Click ---
+TRIPLE_BLINK_WINDOW = 0.6     # seconds - third blink must start within this after second blink ends
+TRIPLE_BLINK_COOLDOWN = 1.0   # seconds - prevent re-trigger after triple blink
+
 # --- Long Blink → Right Click ---
 LONG_BLINK_MIN_DURATION = 0.4 # seconds - blink held longer than this = long blink
 LONG_BLINK_MAX_DURATION = 2.5 # seconds - cap to avoid accidental triggers
