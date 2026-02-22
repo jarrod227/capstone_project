@@ -103,9 +103,9 @@ import os as _os
 _PACKAGE_DIR = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 ML_MODEL_PATH = _os.path.join(_PACKAGE_DIR, "models", "eog_model.pkl")
 ML_SCALER_PATH = _os.path.join(_PACKAGE_DIR, "models", "eog_scaler.pkl")
-ML_WINDOW_SIZE = 100          # samples per classification window (0.5s at 200Hz)
+ML_WINDOW_SIZE = 200          # samples per classification window (1.0s at 200Hz)
 ML_WINDOW_STEP = 20           # step between windows (0.1s at 200Hz)
-ML_CLASSES = ["idle", "blink", "double_blink", "long_blink",
+ML_CLASSES = ["idle", "blink", "double_blink", "triple_blink", "long_blink",
               "look_up", "look_down", "look_left", "look_right"]
 
 # --- Data Collection ---
