@@ -110,7 +110,8 @@ def generate_demo_data(output_dir: str):
 
     Reuses the time-series generator from generate_demo_data.py so that
     training data has realistic temporal patterns (blink spikes, double-blink
-    twin peaks, long-blink sustained plateau, gaze transitions) matching
+    twin peaks, triple-blink triple peaks, long-blink sustained plateau,
+    gaze transitions) matching
     what the model will see during replay or real-time inference.
     """
     from scripts.generate_demo_data import generate_session
