@@ -178,6 +178,24 @@ SS_VELOCITY_RETAIN = 0.95      # Cursor glide per step (0.8=snappy, 0.99=floaty)
 SS_SENSITIVITY = 0.05          # Gyro-to-velocity input gain
 ```
 
+## Real-Time Visualization
+
+Use `scripts/visualize.py` to display live EOG and IMU signals in 3 subplots (vertical EOG, horizontal EOG, gyroscope 3-axis) with threshold lines overlaid. Useful for verifying hardware connections, tuning thresholds, and observing signal patterns.
+
+```bash
+cd python
+
+# With hardware
+python -m scripts.visualize --port /dev/ttyACM0   # Linux
+python -m scripts.visualize --port COM4            # Windows
+
+# Without hardware
+python -m scripts.visualize --simulate
+
+# Custom display window (default: 5 seconds)
+python -m scripts.visualize --simulate --window 10
+```
+
 ## Testing
 
 ```bash
