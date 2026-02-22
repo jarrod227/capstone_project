@@ -59,9 +59,10 @@ class _BaseController:
     movement and eliminates cursor drift during nods/rolls.
     """
 
-    def __init__(self):
+    def __init__(self, keyboard_overlay=None):
         self.deadzone = config.GYRO_DEADZONE
-
+        self.keyboard_overlay = keyboard_overlay
+      
         # Event detectors
         self.blink_detector = BlinkDetector()
         self.gaze_detector = GazeDetector()
@@ -96,17 +97,29 @@ class _BaseController:
         now = time.time()
         gui = _get_pyautogui()
 
+        # --- 0. Keyboard overlay (independent EOG events from keyboard) ---
+        kb_blink = EOGEvent.NONE
+        kb_gaze = EOGEvent.NONE
+        kb_horiz = EOGEvent.NONE
+        kb_cursor_frozen = False
+        if self.keyboard_overlay:
+            kb_blink, kb_gaze, kb_horiz, kb_cursor_frozen = (
+                self.keyboard_overlay.poll(now)
+            )
+
         # --- 1. Cursor movement from IMU gyro ---
         # Suppress ALL cursor movement when any action is active:
         #   - Eye gaze (vertical/horizontal) = scroll/nav intent
+        #   - Keyboard overlay gaze = same intent via keyboard
         #   - Post-roll/nod grace window absorbs residual coupled motion
         gaze_vertical = (eog_v > config.LOOK_UP_THRESHOLD or
                          eog_v < config.LOOK_DOWN_THRESHOLD)
         gaze_horizontal = (eog_h > config.LOOK_RIGHT_THRESHOLD or
                            eog_h < config.LOOK_LEFT_THRESHOLD)
-        cursor_frozen = gaze_horizontal or cursor_frozen_override
+        cursor_frozen = gaze_horizontal or cursor_frozen_override or kb_cursor_frozen
 
         any_action = (gaze_vertical or cursor_frozen or
+                      kb_gaze != EOGEvent.NONE or
                       now - self.last_roll_time < config.HEAD_ROLL_SUPPRESS_DURATION or
                       now - self.last_nod_time < config.HEAD_ROLL_SUPPRESS_DURATION)
 
@@ -114,7 +127,9 @@ class _BaseController:
 
         # --- 2. Blink events (double → left click, triple → double click, long → right click) ---
         blink_event = self.blink_detector.update(eog_v, now)
-
+        if blink_event == EOGEvent.NONE:
+            blink_event = kb_blink  # keyboard fallback
+                 
         if blink_event == EOGEvent.DOUBLE_BLINK:
             gui.click(_pause=False)
             logger.info("Double blink → left click")
@@ -127,7 +142,9 @@ class _BaseController:
 
         # --- 3. Scroll: eye gaze + head tilt fusion ---
         gaze_event = self.gaze_detector.update(eog_v, now)
-
+        if gaze_event == EOGEvent.NONE:
+            gaze_event = kb_gaze  # keyboard fallback
+          
         if gaze_event == EOGEvent.LOOK_UP and gx < -self.deadzone:
             if now - self.last_scroll_time > config.SCROLL_COOLDOWN:
                 amount = max(1, int(abs(gx) / self.deadzone * config.SCROLL_AMOUNT))
@@ -158,7 +175,9 @@ class _BaseController:
 
         # --- 6. Browser back/forward: horizontal gaze + head turn fusion ---
         horiz_event = self.horizontal_gaze_detector.update(eog_h, now)
-
+        if horiz_event == EOGEvent.NONE:
+            horiz_event = kb_horiz  # keyboard fallback
+          
         if horiz_event == EOGEvent.LOOK_LEFT and gy < -self.deadzone:
             if now - self.last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN:
                 gui.hotkey('alt', 'left', _pause=False)
@@ -191,8 +210,8 @@ class ThresholdController(_BaseController):
     proportional to gyro angular velocity (no inertia).
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, keyboard_overlay=None):
+        super().__init__(keyboard_overlay)
         self.sensitivity = config.CURSOR_SENSITIVITY
 
     def _compute_cursor_move(self, gx, gy, any_action, gui):
@@ -224,8 +243,8 @@ class StateSpaceController(_BaseController):
     (user is looking left or right). Double nod centers the cursor.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, keyboard_overlay=None):
+        super().__init__(keyboard_overlay)
         self.velocity_retain = config.SS_VELOCITY_RETAIN
         self.sensitivity = config.SS_SENSITIVITY
         self.dt = config.SS_DT
