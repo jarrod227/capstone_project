@@ -87,7 +87,7 @@ def generate_single_blink(duration_s: float = 0.15) -> tuple[np.ndarray, np.ndar
 
 
 def generate_blink_event(blink_duration_s: float = 0.15,
-                         context_s: float = 0.6) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+                         context_s: float = 1.1) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
     """
     Generate one blink embedded in baseline context, all labeled 'blink'.
 
@@ -114,35 +114,53 @@ def generate_blink_event(blink_duration_s: float = 0.15,
     return eog_v, eog_h, gyro, labels
 
 
-def generate_double_blink() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
-    """Generate double blink: two quick blinks with ~300ms gap."""
-    blink1_ev, blink1_eh, blink1_gyro, _ = generate_single_blink(0.12)
-    gap_ev, gap_eh, gap_gyro, _ = generate_idle(0.25)
-    blink2_ev, blink2_eh, blink2_gyro, _ = generate_single_blink(0.12)
+def generate_double_blink(context_s: float = 1.1) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    """Generate double blink: two quick blinks with ~250ms gap, embedded in baseline context."""
+    blink1_ev, _, _, _ = generate_single_blink(0.12)
+    blink2_ev, _, _, _ = generate_single_blink(0.12)
+  
+    gap_n = int(0.25 * FS)
+    n_event = len(blink1_ev) + gap_n + len(blink2_ev)
+    n_total = int(context_s * FS)
+    n_pre = (n_total - n_event) // 2
+    n_post = n_total - n_event - n_pre
 
-    eog_v = np.concatenate([blink1_ev, gap_ev, blink2_ev])
-    eog_h = np.concatenate([blink1_eh, gap_eh, blink2_eh])
-    gyro = np.vstack([blink1_gyro, gap_gyro, blink2_gyro])
-    labels = ['double_blink'] * len(eog_v)
+    gap_v = np.full(gap_n, config.EOG_BASELINE, dtype=float) + _noise(gap_n, 30)
+    pre_v = np.full(n_pre, config.EOG_BASELINE, dtype=float) + _noise(n_pre, 30)
+    post_v = np.full(n_post, config.EOG_BASELINE, dtype=float) + _noise(n_post, 30)
+
+    eog_v = np.concatenate([pre_v, blink1_ev, gap_v, blink2_ev, post_v])
+    eog_h = np.full(n_total, config.EOG_BASELINE, dtype=float) + _noise(n_total)
+    gyro = np.column_stack([_noise(n_total, 80), _noise(n_total, 80), _noise(n_total, 80)])
+    labels = ['double_blink'] * n_total
     return eog_v, eog_h, gyro, labels
 
 
-def generate_triple_blink() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
-    """Generate triple blink: three quick blinks with ~250ms gaps."""
-    blink1_ev, blink1_eh, blink1_gyro, _ = generate_single_blink(0.12)
-    gap1_ev, gap1_eh, gap1_gyro, _ = generate_idle(0.25)
-    blink2_ev, blink2_eh, blink2_gyro, _ = generate_single_blink(0.12)
-    gap2_ev, gap2_eh, gap2_gyro, _ = generate_idle(0.25)
-    blink3_ev, blink3_eh, blink3_gyro, _ = generate_single_blink(0.12)
+def generate_triple_blink(context_s: float = 1.1) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    """Generate triple blink: three quick blinks with ~250ms gaps, embedded in baseline context."""
+    blink1_ev, _, _, _ = generate_single_blink(0.12)
+    blink2_ev, _, _, _ = generate_single_blink(0.12)
+    blink3_ev, _, _, _ = generate_single_blink(0.12)
 
-    eog_v = np.concatenate([blink1_ev, gap1_ev, blink2_ev, gap2_ev, blink3_ev])
-    eog_h = np.concatenate([blink1_eh, gap1_eh, blink2_eh, gap2_eh, blink3_eh])
-    gyro = np.vstack([blink1_gyro, gap1_gyro, blink2_gyro, gap2_gyro, blink3_gyro])
-    labels = ['triple_blink'] * len(eog_v)
+    gap_n = int(0.25 * FS)
+    n_event = len(blink1_ev) + gap_n + len(blink2_ev) + gap_n + len(blink3_ev)
+    n_total = int(context_s * FS)
+    n_pre = (n_total - n_event) // 2
+    n_post = n_total - n_event - n_pre
+
+    gap1_v = np.full(gap_n, config.EOG_BASELINE, dtype=float) + _noise(gap_n, 30)
+    gap2_v = np.full(gap_n, config.EOG_BASELINE, dtype=float) + _noise(gap_n, 30)
+    pre_v = np.full(n_pre, config.EOG_BASELINE, dtype=float) + _noise(n_pre, 30)
+    post_v = np.full(n_post, config.EOG_BASELINE, dtype=float) + _noise(n_post, 30)
+
+    eog_v = np.concatenate([pre_v, blink1_ev, gap1_v, blink2_ev, gap2_v, blink3_ev, post_v])
+    eog_h = np.full(n_total, config.EOG_BASELINE, dtype=float) + _noise(n_total)
+    gyro = np.column_stack([_noise(n_total, 80), _noise(n_total, 80), _noise(n_total, 80)])
+    labels = ['triple_blink'] * n_total
     return eog_v, eog_h, gyro, labels
 
 
-def generate_long_blink(duration_s: float = 0.5) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+def generate_long_blink(duration_s: float = 0.8) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
     """Generate long blink: sustained high for >0.4s."""
     n = int(duration_s * FS)
     rise = int(0.05 * FS)
