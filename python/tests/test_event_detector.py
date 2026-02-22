@@ -1,5 +1,5 @@
 """
-Tests for EOG event detection: double blink, triple blink, long blink, gaze, head roll, double nod.
+Tests for EOG event detection: double blink, triple blink, long blink, gaze, double nod.
 
 All tests use synthetic time to ensure deterministic behavior.
 """
@@ -11,7 +11,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from eog_cursor.event_detector import (
-    BlinkDetector, GazeDetector, HorizontalGazeDetector, HeadRollDetector,
+    BlinkDetector, GazeDetector, HorizontalGazeDetector,
     DoubleNodDetector, BlinkState, EOGEvent,
 )
 from eog_cursor import config
@@ -240,81 +240,6 @@ class TestGazeDetector(unittest.TestCase):
         # Then back to baseline
         result = self.det.update(config.EOG_BASELINE, self.t)
         self.assertEqual(result, EOGEvent.NONE)
-
-
-class TestHeadRollDetector(unittest.TestCase):
-    """Test head roll flick detection from gyro_z.
-
-    Head roll only triggers when cursor_frozen=True (looking left/right).
-    """
-
-    def setUp(self):
-        self.det = HeadRollDetector()
-        self.t = 0.0
-
-    def _flick(self, gz, duration=0.1, cursor_frozen=True):
-        """Simulate a flick: spike for duration, then return to neutral."""
-        # Spike phase
-        steps = int(duration / config.SAMPLE_PERIOD)
-        for _ in range(max(steps, 1)):
-            self.det.update(gz, self.t, cursor_frozen=cursor_frozen)
-            self.t += config.SAMPLE_PERIOD
-        # Return to neutral — trigger happens here
-        return self.det.update(0, self.t, cursor_frozen=cursor_frozen)
-
-    def test_roll_detected(self):
-        """Quick gz spike + return to neutral should trigger when frozen."""
-        result = self._flick(config.HEAD_ROLL_THRESHOLD + 500, duration=0.1)
-        self.assertEqual(result, "switch_window")
-
-    def test_small_gz_ignored(self):
-        """Small gyro_z should not trigger."""
-        result = self._flick(500, duration=0.1)
-        self.assertIsNone(result)
-
-    def test_held_too_long_ignored(self):
-        """gz held above threshold too long should not trigger."""
-        duration = config.HEAD_ROLL_MAX_DURATION + 0.1
-        result = self._flick(config.HEAD_ROLL_THRESHOLD + 500, duration=duration)
-        self.assertIsNone(result)
-
-    def test_cooldown_works(self):
-        """Rapid gz flicks should be suppressed by cooldown."""
-        r1 = self._flick(4000, duration=0.1)
-        self.assertEqual(r1, "switch_window")
-
-        self.t += 0.1  # within cooldown
-        r2 = self._flick(4000, duration=0.1)
-        self.assertIsNone(r2)
-
-        self.t += config.HEAD_ROLL_COOLDOWN  # after cooldown
-        r3 = self._flick(4000, duration=0.1)
-        self.assertEqual(r3, "switch_window")
-
-    def test_negative_roll(self):
-        """Negative gyro_z (roll left) should also trigger."""
-        result = self._flick(-(config.HEAD_ROLL_THRESHOLD + 500), duration=0.1)
-        self.assertEqual(result, "switch_window")
-
-    def test_roll_ignored_when_not_frozen(self):
-        """Roll should NOT trigger when cursor is not frozen."""
-        result = self._flick(config.HEAD_ROLL_THRESHOLD + 500, duration=0.1,
-                             cursor_frozen=False)
-        self.assertIsNone(result)
-
-    def test_roll_state_reset_on_unfreeze(self):
-        """Spike started while frozen should be discarded if cursor unfreezes."""
-        gz = config.HEAD_ROLL_THRESHOLD + 500
-        # Start spike while frozen
-        for _ in range(5):
-            self.det.update(gz, self.t, cursor_frozen=True)
-            self.t += config.SAMPLE_PERIOD
-        # Cursor unfreezes mid-spike (state resets)
-        self.det.update(gz, self.t, cursor_frozen=False)
-        self.t += config.SAMPLE_PERIOD
-        # Re-freeze and return to neutral — should NOT trigger (spike was reset)
-        result = self.det.update(0, self.t, cursor_frozen=True)
-        self.assertIsNone(result)
 
 
 class TestDoubleNodDetector(unittest.TestCase):
