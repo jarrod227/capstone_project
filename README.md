@@ -187,7 +187,7 @@ cd python
 
 python -m scripts.visualize --port /dev/ttyACM0   # Linux
 python -m scripts.visualize --port COM4            # Windows
-python -m scripts.visualize --port COM4 --window 10  # Custom display window (default: 5s)
+python -m scripts.visualize --port COM4 --window 10  # Show last 10s of data on screen (default: 5s)
 ```
 
 ## Testing
