@@ -2,8 +2,8 @@
 Machine learning classifier for EOG event detection.
 
 Uses SVM (Support Vector Machine) to classify EOG signal patterns
-into discrete events: idle, blink, double_blink, long_blink,
-look_up, look_down, look_left, look_right.
+into discrete events: idle, blink, double_blink, triple_blink,
+long_blink, look_up, look_down, look_left, look_right.
 """
 
 import logging
