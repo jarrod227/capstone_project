@@ -46,6 +46,16 @@ def setup_logging(verbose: bool = False):
     )
 
 
+def _create_keyboard_overlay(enabled: bool):
+    """Create and start a KeyboardOverlay if enabled, else return None."""
+    if not enabled:
+        return None
+    from eog_cursor.keyboard_overlay import KeyboardOverlay
+    overlay = KeyboardOverlay()
+    overlay.start()
+    return overlay
+
+
 def run_control_loop(source, controller, calibrator=None, kalman=None):
     """Run the sensor → filter → controller loop (shared by threshold and statespace modes)."""
     if config.EOG_LOWPASS_ENABLED:
@@ -69,7 +79,7 @@ def run_control_loop(source, controller, calibrator=None, kalman=None):
         controller.update(eog_v, eog_h, gx, gy, gz)
 
 
-def run_threshold_mode(source, calibrator=None, kalman=None):
+def run_threshold_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
     """Run cursor control with threshold-based event detection."""
     print("Threshold mode active.")
     print(f"  Blink threshold:  {config.BLINK_THRESHOLD}")
@@ -78,21 +88,22 @@ def run_threshold_mode(source, calibrator=None, kalman=None):
     print(f"  Long blink:       hold >={config.LONG_BLINK_MIN_DURATION}s → right click")
     print(f"  Scroll:           eye gaze + head tilt fusion")
     print(f"  Window switch:    head roll flick (gyro_z)")
-    run_control_loop(source, ThresholdController(), calibrator, kalman)
+    run_control_loop(source, ThresholdController(keyboard_overlay), calibrator, kalman)
 
 
-def run_statespace_mode(source, calibrator=None, kalman=None):
+def run_statespace_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
     """Run cursor control with state-space physics model."""
     print("State-space mode active.")
     print(f"  Velocity retain: {config.SS_VELOCITY_RETAIN}")
     print(f"  Sensitivity:  {config.SS_SENSITIVITY}")
     print(f"  Deadzone:     {config.GYRO_DEADZONE}")
-    run_control_loop(source, StateSpaceController(), calibrator, kalman)
+    run_control_loop(source, StateSpaceController(keyboard_overlay), calibrator, kalman)
 
 
-def run_ml_mode(source, calibrator=None, kalman=None):
+def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
     """Run cursor control with ML-based EOG classification + sensor fusion."""
     from eog_cursor.ml_classifier import EOGClassifier
+    from eog_cursor.event_detector import EOGEvent
 
     classifier = EOGClassifier()
     if not classifier.load():
@@ -100,6 +111,9 @@ def run_ml_mode(source, calibrator=None, kalman=None):
         print("Run training first: python -m scripts.train_model --generate-demo")
         sys.exit(1)
 
+    # keyboard_overlay is NOT passed to the controller in ML mode;
+    # keyboard events are merged into the prediction-based logic below
+    # to avoid double-firing actions (ML inline + controller).
     controller = StateSpaceController()
     deadzone = config.GYRO_DEADZONE
 
@@ -118,6 +132,16 @@ def run_ml_mode(source, calibrator=None, kalman=None):
     last_nav_time = 0.0
     last_prediction = "idle"  # Remember last ML result for continuous suppression
 
+    # Keyboard → ML prediction mapping
+    _KB_EVENT_TO_PREDICTION = {
+        EOGEvent.DOUBLE_BLINK: "double_blink",
+        EOGEvent.LONG_BLINK: "long_blink",
+        EOGEvent.LOOK_UP: "look_up",
+        EOGEvent.LOOK_DOWN: "look_down",
+        EOGEvent.LOOK_LEFT: "look_left",
+        EOGEvent.LOOK_RIGHT: "look_right",
+    }
+
     for packet in source.stream():
         # ML classification uses raw EOG values (must match training data)
         prediction = classifier.predict(float(packet.eog_v), float(packet.eog_h))
@@ -134,6 +158,25 @@ def run_ml_mode(source, calibrator=None, kalman=None):
             gx, gy, gz = kalman.update(gx, gy, gz)
         elif calibrator:
             gx, gy, gz = calibrator.correct(gx, gy, gz)
+
+        # --- Keyboard overlay: merge into prediction when ML is idle ---
+        kb_frozen = False
+        kb_triple = False
+        if keyboard_overlay:
+            kb_blink, kb_gaze, kb_horiz, kb_frozen = keyboard_overlay.poll(now)
+
+            # Triple blink has no ML equivalent — handle separately
+            if kb_blink == EOGEvent.TRIPLE_BLINK:
+                kb_triple = True
+
+            # If ML didn't detect an action, use keyboard event as prediction
+            if not prediction or prediction == "idle":
+                for evt in (kb_blink, kb_gaze, kb_horiz):
+                    mapped = _KB_EVENT_TO_PREDICTION.get(evt)
+                    if mapped:
+                        prediction = mapped
+                        last_prediction = mapped  # cursor suppression
+                        break
 
         if prediction and prediction != "idle":
             action = None
@@ -178,6 +221,12 @@ def run_ml_mode(source, calibrator=None, kalman=None):
             if action:
                 logging.getLogger(__name__).info(f"ML: {prediction} -> {action}")
 
+        # Handle triple blink (keyboard only — ML doesn't classify this)
+        if kb_triple and now - last_blink_time > config.TRIPLE_BLINK_COOLDOWN:
+            pyautogui.doubleClick(_pause=False)
+            logging.getLogger(__name__).info("KB: triple blink -> double click")
+            last_blink_time = now
+
         # IMU controls cursor via state-space controller.
         # Use last_prediction (not prediction) for suppression — prediction is
         # None for 19/20 samples, but suppression must be continuous.
@@ -186,7 +235,7 @@ def run_ml_mode(source, calibrator=None, kalman=None):
         # When ML detects horizontal gaze (look_left/look_right), pass real
         # gx/gz so the controller's nod/roll detectors can work while the
         # cursor is frozen via cursor_frozen_override.
-        cursor_frozen = last_prediction in ("look_left", "look_right")
+        cursor_frozen = last_prediction in ("look_left", "look_right") or kb_frozen
         if cursor_frozen:
             # Cursor frozen by override; pass real gx/gz for nod/roll detection
             cursor_gx = gx
@@ -249,7 +298,9 @@ Examples:
                         help="Override gyro deadzone threshold")
     parser.add_argument("--blink-threshold", type=int, default=None,
                         help="Override blink detection threshold")
-
+    parser.add_argument("--keyboard-overlay", "--kb", action="store_true",
+                        help="Enable keyboard overlay for EOG events (use with --port or --replay)")
+  
     args = parser.parse_args()
     setup_logging(args.verbose)
 
@@ -264,6 +315,11 @@ Examples:
     if args.blink_threshold is not None:
         config.BLINK_THRESHOLD = args.blink_threshold
 
+    # Validate --keyboard-overlay usage
+    if args.keyboard_overlay and args.simulate:
+        parser.error("--keyboard-overlay cannot be used with --simulate "
+                     "(simulator already has full keyboard control)")
+  
     # Create data source
     if args.replay:
         from eog_cursor.csv_replay import CSVReplaySource
@@ -324,6 +380,17 @@ Examples:
         print("    Q / Escape      → quit")
         print()
 
+    if args.keyboard_overlay:
+        print("  Keyboard overlay (EOG events, IMU from hardware):")
+        print("    Space (tap x2)  → double blink (left click)")
+        print("    Space (hold)    → long blink (right click)")
+        print("    Space (tap x3)  → triple blink (double click)")
+        print("    U               → look up  (scroll fusion with hardware head tilt)")
+        print("    D               → look down (scroll fusion with hardware head tilt)")
+        print("    L               → look left  (freezes cursor, enables nod/roll)")
+        print("    R               → look right (freezes cursor, enables nod/roll)")
+        print()
+
     print("  Press Ctrl+C to stop.")
     print("=" * 60)
 
@@ -345,16 +412,20 @@ Examples:
         print("  Calibration done. Kalman filter active. Starting control loop.")
         print()
 
+    keyboard_overlay = _create_keyboard_overlay(args.keyboard_overlay)
+
     try:
         if args.mode == "threshold":
-            run_threshold_mode(source, calibrator, kalman)
+            run_threshold_mode(source, calibrator, kalman, keyboard_overlay)
         elif args.mode == "statespace":
-            run_statespace_mode(source, calibrator, kalman)
+            run_statespace_mode(source, calibrator, kalman, keyboard_overlay)
         elif args.mode == "ml":
-            run_ml_mode(source, calibrator, kalman)
+            run_ml_mode(source, calibrator, kalman, keyboard_overlay)
     except KeyboardInterrupt:
         print("\nStopped by user.")
     finally:
+        if keyboard_overlay:
+            keyboard_overlay.stop()
         if hasattr(source, 'disconnect'):
             source.disconnect()
         if hasattr(source, 'stop'):
