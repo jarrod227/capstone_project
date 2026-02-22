@@ -12,8 +12,8 @@ Key mapping (EOG events only — IMU still comes from hardware):
   Space (tap x3):   Triple blink → double click
   U:                Look up  (for scroll fusion with hardware IMU)
   D:                Look down (for scroll fusion with hardware IMU)
-  L:                Look left  (freezes cursor, enables nod/roll from hardware IMU)
-  R:                Look right (freezes cursor, enables nod/roll from hardware IMU)
+  L:                Look left  (freezes cursor, enables nod from hardware IMU)
+  R:                Look right (freezes cursor, enables nod from hardware IMU)
 """
 
 import logging
