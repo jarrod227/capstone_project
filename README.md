@@ -67,7 +67,7 @@ python -m scripts.collect_data --port COM4
 
 Label keys during recording: `0`=idle `1`=blink `2`=double_blink `3`=triple_blink `4`=long_blink `5`=look_up `6`=look_down `7`=look_left `8`=look_right, `ESC`=stop and save.
 
-Procedure: press label key before gesture → perform gesture → press `0` to return to idle.
+Procedure: press label key **~1 s before** the gesture → perform gesture → wait **~1 s** → press `0`. The extra buffer ensures the actual gesture falls well within the labeled region; a few hundred ms of timing error is fine because the ML pipeline uses windowed features.
 
 > **Note:** The serial port is exclusive — only one process can open it at a time. Close `collect_data` before running `main.py` on the same port.
 
