@@ -22,7 +22,7 @@ All 9 run configurations (3 sources × 3 modes) share the same data source layer
     │threshold │  │ statespace │  │         ml            │
     │  mode    │  │   mode     │  │                       │
     │          │  │            │  │  raw EOG (both ch)    │
-    │ lowpass  │  │ lowpass    │  │  SlidingWindow (100)  │
+    │ lowpass  │  │ lowpass    │  │  SlidingWindow (200)  │
     │ EOG      │  │ EOG        │  │  EOGClassifier (SVM)  │
     │ +deadzone│  │ +state-    │  │  +deadzone (inside    │
     │ (inside  │  │  space     │  │   StateSpaceController│
@@ -245,8 +245,8 @@ scripts/collect_data.py --port COM4
     │
     │  Reads live sensor data via SerialReader (serial_reader.py)
     │  User labels events in real time with keyboard:
-    │    0=idle  1=blink  2=double_blink  3=long_blink
-    │    4=up  5=down  6=left  7=right
+    │    0=idle  1=blink  2=double_blink  3=triple_blink
+    │    4=long_blink  5=up  6=down  7=left  8=right
     │  Press ESC to stop and save
     ▼
 data/raw/eog_session_<timestamp>.csv
