@@ -240,7 +240,7 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
             # Cursor frozen by override; pass real gx/gz for nod/roll detection
             cursor_gx = gx
             cursor_gy = gy
-        elif last_prediction != "idle":
+        elif last_prediction not in ("idle", "blink"):
             cursor_gx = 0
             cursor_gy = 0
             # Zero velocity to freeze cursor during action
