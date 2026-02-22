@@ -188,7 +188,7 @@ cd python && python -m pytest tests/ -v
 | `test_event_detector.py` — 37 tests | Double blink detected; triple blink detected; triple blink window expired; single blink ignored; long blink fires on release; long blink max duration rejected; sustained close fires once; cooldown prevents re-trigger; sustained gaze detected; transient gaze rejected; head roll flick triggers window switch (only when cursor frozen); held roll ignored; roll ignored when not frozen; double head nod triggers center cursor (only when cursor frozen); single nod ignored; nod ignored when not frozen; state reset on unfreeze |
 | `test_keyboard_overlay.py` — 12 tests | Double/triple/long blink from Space; look up/down from U/D keys; look left/right from L/R keys; cursor freeze from L/R; idle produces no events; Space does not produce gaze events |
 | `test_signal_processing.py` — 21 tests | Low-pass preserves DC baseline; high frequency attenuated; sliding window keeps most recent samples; Kalman filter tracks constant bias, passes real motion, tracks drift; 3-axis wrapper corrects all axes; feature vector has correct length; state-space velocity decays to ~0 after 200 iterations |
-| `test_ml_pipeline.py` — 7 tests | Training accuracy >80%; model save/load roundtrip succeeds; predictions are valid labels; streaming classifier produces output; blink features clearly separable from idle |
+| `test_ml_pipeline.py` — 7 tests | Training accuracy >80%; model save/load roundtrip succeeds; predictions are valid labels (all 9 classes); streaming classifier produces output; blink features clearly separable from idle |
 
 ## Performance
 
