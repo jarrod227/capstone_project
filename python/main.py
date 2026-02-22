@@ -222,7 +222,6 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
             if action:
                 logging.getLogger(__name__).info(f"ML: {prediction} -> {action}")
 
-
         # IMU controls cursor via state-space controller.
         # Use last_prediction (not prediction) for suppression — prediction is
         # None for 19/20 samples, but suppression must be continuous.
