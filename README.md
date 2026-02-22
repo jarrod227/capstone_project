@@ -185,15 +185,9 @@ Use `scripts/visualize.py` to display live EOG and IMU signals in 3 subplots (ve
 ```bash
 cd python
 
-# With hardware
 python -m scripts.visualize --port /dev/ttyACM0   # Linux
 python -m scripts.visualize --port COM4            # Windows
-
-# Without hardware
-python -m scripts.visualize --simulate
-
-# Custom display window (default: 5 seconds)
-python -m scripts.visualize --simulate --window 10
+python -m scripts.visualize --port COM4 --window 10  # Custom display window (default: 5s)
 ```
 
 ## Testing
