@@ -10,7 +10,6 @@ Action mapping (per hardware capability table):
   - Scroll Down:    Eye Down + Head Down (eye-head sync, eog_v + gx)
   - Back:           Eye Left + Head Left (eye-head sync, eog_h + gy)
   - Forward:        Eye Right + Head Right (eye-head sync, eog_h + gy)
-  - Window Switch:  Head Roll Flick (lateral head tilt, gyro_z)
   - Cursor Move:    IMU Gyro X/Y (angular velocity)
 
 Two controller variants:
@@ -25,7 +24,7 @@ import numpy as np
 
 from . import config
 from .event_detector import (
-    BlinkDetector, GazeDetector, HorizontalGazeDetector, HeadRollDetector,
+    BlinkDetector, GazeDetector, HorizontalGazeDetector,
     DoubleNodDetector, EOGEvent
 )
 
@@ -54,9 +53,9 @@ class _BaseController:
     data maps to pixel displacement.
 
     "Cursor frozen" means the user is looking left or right (horizontal
-    EOG beyond threshold).  Head roll and double nod are only recognised
-    in this state, which prevents accidental triggers during normal head
-    movement and eliminates cursor drift during nods/rolls.
+    EOG beyond threshold).  Double nod is only recognised in this state,
+    which prevents accidental triggers during normal head movement and
+    eliminates cursor drift during nods.
     """
 
     def __init__(self, keyboard_overlay=None):
@@ -67,13 +66,11 @@ class _BaseController:
         self.blink_detector = BlinkDetector()
         self.gaze_detector = GazeDetector()
         self.horizontal_gaze_detector = HorizontalGazeDetector()
-        self.roll_detector = HeadRollDetector()
         self.nod_detector = DoubleNodDetector()
 
         # Fusion cooldown state
         self.last_scroll_time = 0.0
         self.last_nav_time = 0.0
-        self.last_roll_time = 0.0
         self.last_nod_time = 0.0
 
     def _compute_cursor_move(self, gx, gy, any_action, gui):
@@ -111,7 +108,7 @@ class _BaseController:
         # Suppress ALL cursor movement when any action is active:
         #   - Eye gaze (vertical/horizontal) = scroll/nav intent
         #   - Keyboard overlay gaze = same intent via keyboard
-        #   - Post-roll/nod grace window absorbs residual coupled motion
+        #   - Post-nod grace window absorbs residual coupled motion
         gaze_vertical = (eog_v > config.LOOK_UP_THRESHOLD or
                          eog_v < config.LOOK_DOWN_THRESHOLD)
         gaze_horizontal = (eog_h > config.LOOK_RIGHT_THRESHOLD or
@@ -120,9 +117,8 @@ class _BaseController:
 
         any_action = (gaze_vertical or cursor_frozen or
                       kb_gaze != EOGEvent.NONE or
-                      now - self.last_roll_time < config.HEAD_ROLL_SUPPRESS_DURATION or
-                      now - self.last_nod_time < config.HEAD_ROLL_SUPPRESS_DURATION)
-
+                      now - self.last_nod_time < config.DOUBLE_NOD_COOLDOWN)
+                 
         self._compute_cursor_move(gx, gy, any_action, gui)
 
         # --- 2. Blink events (double → left click, triple → double click, long → right click) ---
@@ -158,14 +154,7 @@ class _BaseController:
                 self.last_scroll_time = now
                 logger.info(f"Scroll down {amount} lines (eye down + head down)")
 
-        # --- 4. Window switch: head roll flick (only while cursor frozen) ---
-        roll_event = self.roll_detector.update(gz, now, cursor_frozen=cursor_frozen)
-        if roll_event == "switch_window":
-            self.last_roll_time = now
-            gui.hotkey('alt', 'tab', _pause=False)
-            logger.info("Head roll → window switch (Alt+Tab)")
-
-        # --- 5. Center cursor: double head nod (only while cursor frozen) ---
+        # --- 4. Center cursor: double head nod (only while cursor frozen) ---
         nod_event = self.nod_detector.update(gx, now, cursor_frozen=cursor_frozen)
         if nod_event == "center_cursor":
             self.last_nod_time = now
@@ -173,7 +162,7 @@ class _BaseController:
             gui.moveTo(screen_w // 2, screen_h // 2, _pause=False)
             logger.info("Double nod → center cursor")
 
-        # --- 6. Browser back/forward: horizontal gaze + head turn fusion ---
+        # --- 5. Browser back/forward: horizontal gaze + head turn fusion ---
         horiz_event = self.horizontal_gaze_detector.update(eog_h, now)
         if horiz_event == EOGEvent.NONE:
             horiz_event = kb_horiz  # keyboard fallback
@@ -194,11 +183,9 @@ class _BaseController:
         self.blink_detector.reset()
         self.gaze_detector.reset()
         self.horizontal_gaze_detector.reset()
-        self.roll_detector.reset()
         self.nod_detector.reset()
         self.last_scroll_time = 0.0
         self.last_nav_time = 0.0
-        self.last_roll_time = 0.0
         self.last_nod_time = 0.0
 
 
@@ -239,7 +226,7 @@ class StateSpaceController(_BaseController):
     - A contains velocity retention (velocity decays exponentially)
     - B maps gyro input to velocity changes
 
-    Head roll and double nod only activate when the cursor is frozen
+    Double nod only activates when the cursor is frozen
     (user is looking left or right). Double nod centers the cursor.
     """
 
