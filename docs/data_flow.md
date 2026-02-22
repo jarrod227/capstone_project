@@ -63,7 +63,7 @@ main.py --simulate
             ├─→ Key mapping
             │     Arrow keys → head motion (gyro_x/gyro_y)
             │     Space → blink spike, N → head nod
-            │     U/D/L/R → gaze shifts (eog_v/eog_h), W → head roll
+            │     U/D/L/R → gaze shifts (eog_v/eog_h)
             │
             └─→ yields SensorPacket(eog_v, eog_h, gyro_x, gyro_y, gyro_z)
 ```
@@ -90,7 +90,7 @@ Each mode function in `main.py` iterates over `source.stream()` and unpacks `Sen
 |------|-----------|--------------|
 | threshold | `ThresholdController` | Low-pass filtered eog_v/eog_h → event detectors |
 | statespace | `StateSpaceController` | Low-pass filtered eog_v/eog_h → event detectors |
-| ml | `StateSpaceController` (cursor + head roll/nod via cursor_frozen_override, EOG=baseline) | Raw eog_v/eog_h → `EOGClassifier.predict()` + inline fusion (no filtering — must match training data) |
+| ml | `StateSpaceController` (cursor + nod via cursor_frozen_override, EOG=baseline) | Raw eog_v/eog_h → `EOGClassifier.predict()` + inline fusion (no filtering — must match training data) |
 
 ### Threshold Mode
 
@@ -115,10 +115,6 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                ├─→ HorizontalGazeDetector (event_detector.py)
                │     eog_h + gy fusion → browser back/forward
                │
-               ├─→ HeadRollDetector (event_detector.py)
-               │     gz → Alt+Tab window switch
-               │     ⚡ Only active when cursor_frozen (looking left/right)
-               │
                └─→ DoubleNodDetector (event_detector.py)
                      gx → center cursor (two quick nods)
                      ⚡ Only active when cursor_frozen (looking left/right)
@@ -127,7 +123,7 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                           pyautogui (OS mouse/keyboard API)
 ```
 
-**Cursor freeze mechanic:** Looking left or right (eog_h beyond threshold) freezes the cursor. Head roll and double nod detectors are only active while the cursor is frozen — this prevents accidental triggers during normal head movement and eliminates cursor drift during gestures.
+**Cursor freeze mechanic:** Looking left or right (eog_h beyond threshold) freezes the cursor. The double nod detector is only active while the cursor is frozen — this prevents accidental triggers during normal head movement and eliminates cursor drift during gestures.
 
 **Files:** `main.py` → `config.py` → `signal_processing.py` → `cursor_control.py` → `event_detector.py`
 
@@ -155,10 +151,6 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │
                ├─→ HorizontalGazeDetector (event_detector.py)
                │     eog_h + gy fusion → browser back/forward
-               │
-               ├─→ HeadRollDetector (event_detector.py)
-               │     ⚡ Only active when cursor_frozen (looking left/right)
-               │     gz → Alt+Tab window switch
                │
                └─→ DoubleNodDetector (event_detector.py)
                      gx → center cursor (two quick nods)
@@ -211,7 +203,7 @@ main.py ─→ run_ml_mode() (main.py)
                      (all EOG classification handled by ML above)
                      gyro_x/gyro_y → inline deadzone → state-space → cursor
                      cursor_frozen_override=True when ML predicts look_left/look_right
-                     → enables HeadRollDetector + DoubleNodDetector inside controller
+                     → enables DoubleNodDetector inside controller
                                 │
                                 ▼
                           pyautogui (OS mouse/keyboard API)
@@ -219,7 +211,7 @@ main.py ─→ run_ml_mode() (main.py)
 
 **Files:** `main.py` → `config.py` → `signal_processing.py` → `ml_classifier.py` → `feature_extraction.py` → `cursor_control.py` → `models/eog_model.pkl` + `models/eog_scaler.pkl`
 
-**Difference from threshold/statespace:** Uses SVM classifier instead of event detectors for EOG classification. Sensor fusion for scroll/navigation is done inline in `main.py` rather than in event_detector.py. When ML detects horizontal gaze, `cursor_frozen_override=True` is passed to the controller so that head roll and double nod gestures work while the cursor is frozen.
+**Difference from threshold/statespace:** Uses SVM classifier instead of event detectors for EOG classification. Sensor fusion for scroll/navigation is done inline in `main.py` rather than in event_detector.py. When ML detects horizontal gaze, `cursor_frozen_override=True` is passed to the controller so that the double nod gesture works while the cursor is frozen.
 
 ## ML Training Pipeline (Offline)
 
@@ -316,7 +308,7 @@ STM32CubeIDE project
 | `eog_cursor/csv_replay.py` | `CSVReplaySource` (offline CSV playback) |
 | `eog_cursor/signal_processing.py` | `EOGLowPassFilter`, `GyroCalibrator`, `GyroKalmanFilter`, `GyroKalmanFilter3Axis`, `SlidingWindow` |
 | `eog_cursor/feature_extraction.py` | `extract_features()`, `extract_dual_features()` |
-| `eog_cursor/event_detector.py` | `BlinkDetector`, `GazeDetector`, `HorizontalGazeDetector`, `HeadRollDetector`, `DoubleNodDetector` |
+| `eog_cursor/event_detector.py` | `BlinkDetector`, `GazeDetector`, `HorizontalGazeDetector`, `DoubleNodDetector` |
 | `eog_cursor/cursor_control.py` | `ThresholdController`, `StateSpaceController` |
 | `eog_cursor/keyboard_overlay.py` | `KeyboardOverlay` (keyboard-injected EOG events) |
 | `eog_cursor/ml_classifier.py` | `EOGClassifier` (SVM wrapper) |
