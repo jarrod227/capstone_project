@@ -183,7 +183,7 @@ main.py ─→ run_ml_mode() (main.py)
                │     ├─→ SlidingWindow (signal_processing.py)
                │     │     200-sample dual-channel buffer
                │     │
-               │     ├─→ extract_features() (feature_extraction.py)
+               │     ├─→ extract_dual_features() (feature_extraction.py)
                │     │     20 features (peak_amp, zero_cross, slope, max_deriv,
                │     │       mean, std, skew, kurt, rms, deriv_var) × 2 ch
                │     │
@@ -318,8 +318,10 @@ STM32CubeIDE project
 | `eog_cursor/feature_extraction.py` | `extract_features()`, `extract_dual_features()` |
 | `eog_cursor/event_detector.py` | `BlinkDetector`, `GazeDetector`, `HorizontalGazeDetector`, `HeadRollDetector`, `DoubleNodDetector` |
 | `eog_cursor/cursor_control.py` | `ThresholdController`, `StateSpaceController` |
+| `eog_cursor/keyboard_overlay.py` | `KeyboardOverlay` (keyboard-injected EOG events) |
 | `eog_cursor/ml_classifier.py` | `EOGClassifier` (SVM wrapper) |
 | `scripts/generate_demo_data.py` | Synthetic training data generator |
+| `scripts/visualize.py` | Real-time 3-subplot signal visualization |
 | `scripts/collect_data.py` | Real-time labeled data collection from hardware |
 | `scripts/train_model.py` | SVM training + cross-validation |
 | `firmware/Core/Src/main.c` | STM32 main loop: dual ADC + I2C gyro + UART TX @200Hz |
