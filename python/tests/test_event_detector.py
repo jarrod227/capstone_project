@@ -51,17 +51,48 @@ class TestBlinkDetector(unittest.TestCase):
         return result
 
     def test_double_blink_detected(self):
-        """Two quick blinks within window should produce DOUBLE_BLINK."""
+        """Two quick blinks within window should produce DOUBLE_BLINK (after triple-blink timeout)."""
         # First blink (0.1s)
         self._feed_blink(0.1)
         # Gap between blinks (0.2s)
         self._feed_idle(0.2)
         # Second blink (0.1s)
+        self._feed_blink(0.1)
+        # Drop below threshold, enters WAIT_THIRD
+        self._feed_idle(0.05)
+        # Wait for triple blink window to expire → emits DOUBLE_BLINK
+        result = self._feed_idle(config.TRIPLE_BLINK_WINDOW + 0.05)
+
+        self.assertEqual(result, EOGEvent.DOUBLE_BLINK)
+
+    def test_triple_blink_detected(self):
+        """Three quick blinks within window should produce TRIPLE_BLINK."""
+        # First blink (0.1s)
+        self._feed_blink(0.1)
+        # Gap (0.2s)
+        self._feed_idle(0.2)
+        # Second blink (0.1s)
+        self._feed_blink(0.1)
+        # Gap (0.2s)
+        self._feed_idle(0.2)
+        # Third blink (0.1s)
         result = self._feed_blink(0.1)
-        # After second blink ends, need to drop below threshold
+        # After third blink ends, need to drop below threshold
         if result == EOGEvent.NONE:
             result = self._feed_idle(0.05)
 
+        self.assertEqual(result, EOGEvent.TRIPLE_BLINK)
+
+    def test_triple_blink_window_expired(self):
+        """Third blink too late should produce DOUBLE_BLINK, not TRIPLE_BLINK."""
+        # First blink (0.1s)
+        self._feed_blink(0.1)
+        # Gap (0.2s)
+        self._feed_idle(0.2)
+        # Second blink (0.1s)
+        self._feed_blink(0.1)
+        # Wait for triple window to expire → DOUBLE_BLINK
+        result = self._feed_idle(config.TRIPLE_BLINK_WINDOW + 0.1)
         self.assertEqual(result, EOGEvent.DOUBLE_BLINK)
 
     def test_long_blink_detected(self):
@@ -92,15 +123,19 @@ class TestBlinkDetector(unittest.TestCase):
         self._feed_blink(0.1)
         self._feed_idle(0.2)
         self._feed_blink(0.1)
-        result1 = self._feed_idle(0.05)
+        # Wait for triple blink window to expire → DOUBLE_BLINK
+        # Use minimal extra idle (+1 sample) so the second attempt stays within cooldown
+        result1 = self._feed_idle(config.TRIPLE_BLINK_WINDOW + config.SAMPLE_PERIOD)
         self.assertEqual(result1, EOGEvent.DOUBLE_BLINK)
 
-        # Immediately try another double blink (within cooldown)
-        self._feed_blink(0.1)
-        self._feed_idle(0.2)
-        self._feed_blink(0.1)
-        result2 = self._feed_idle(0.05)
-        # Should be suppressed
+        # Immediately try another double blink with minimal durations.
+        # Gap: 3*0.06 + 0.6 + 0.005 leftover = 0.785s < 0.8s cooldown
+        min_blink = config.BLINK_MIN_DURATION + 0.01  # 0.06s
+        self._feed_blink(min_blink)
+        self._feed_idle(min_blink)
+        self._feed_blink(min_blink)
+        result2 = self._feed_idle(config.TRIPLE_BLINK_WINDOW + config.SAMPLE_PERIOD)
+        # Should be suppressed by cooldown
         self.assertEqual(result2, EOGEvent.NONE)
 
     def test_reset_clears_state(self):
@@ -283,7 +318,7 @@ class TestHeadRollDetector(unittest.TestCase):
 
 
 class TestDoubleNodDetector(unittest.TestCase):
-    """Test double head nod detection from gyro_x.
+    """Test double head nod detection from gyro_x for cursor centering.
 
     Double nod only triggers when cursor_frozen=True (looking left/right).
     """
@@ -301,11 +336,11 @@ class TestDoubleNodDetector(unittest.TestCase):
         return self.det.update(0, self.t, cursor_frozen=cursor_frozen)
 
     def test_double_nod_detected(self):
-        """Two quick nods should trigger double_click when frozen."""
+        """Two quick nods should trigger center_cursor when frozen."""
         self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
         self.t += 0.1  # gap between nods
         result = self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
-        self.assertEqual(result, "double_click")
+        self.assertEqual(result, "center_cursor")
 
     def test_single_nod_ignored(self):
         """One nod alone should not trigger."""
@@ -340,7 +375,7 @@ class TestDoubleNodDetector(unittest.TestCase):
         self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
         self.t += 0.1
         r1 = self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
-        self.assertEqual(r1, "double_click")
+        self.assertEqual(r1, "center_cursor")
 
         # Second double nod within cooldown
         self.t += 0.1
@@ -354,7 +389,7 @@ class TestDoubleNodDetector(unittest.TestCase):
         self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
         self.t += 0.1
         r3 = self._nod(config.DOUBLE_NOD_THRESHOLD + 500, duration=0.1)
-        self.assertEqual(r3, "double_click")
+        self.assertEqual(r3, "center_cursor")
 
     def test_nod_ignored_when_not_frozen(self):
         """Double nod should NOT trigger when cursor is not frozen."""
