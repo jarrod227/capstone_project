@@ -184,7 +184,8 @@ main.py ─→ run_ml_mode() (main.py)
                │     │     200-sample dual-channel buffer
                │     │
                │     ├─→ extract_features() (feature_extraction.py)
-               │     │     20 features: mean, std, range, slope, energy × 2 ch
+               │     │     20 features (peak_amp, zero_cross, slope, max_deriv,
+               │     │       mean, std, skew, kurt, rms, deriv_var) × 2 ch
                │     │
                │     ├─→ eog_scaler.pkl (StandardScaler)
                │     │     normalize features
