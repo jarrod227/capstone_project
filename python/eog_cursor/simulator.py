@@ -9,12 +9,13 @@ Keyboard controls:
   Arrow keys:       Simulate head motion (IMU gyro X/Y)
   Space (tap x2):   Simulate double blink → left click
   Space (hold):     Simulate long blink → right click
-  N (tap x2):       Simulate double head nod → double click
+  Space (tap x3):   Simulate triple blink → double click
+  L/R + N (tap x2): Simulate look left/right + double nod → center cursor
   U + Arrow Up:     Simulate look up + head up → scroll up
   D + Arrow Down:   Simulate look down + head down → scroll down
   L + Arrow Left:   Simulate look left + head left → browser back
   R + Arrow Right:  Simulate look right + head right → browser forward
-  W:                Simulate head roll flick → window switch
+  L/R + W:          Simulate look left/right + head roll flick → window switch
   Q / Escape:       Quit
 
 EOG signal model (12-bit ADC, dual-channel):
@@ -137,8 +138,8 @@ class HardwareSimulator:
         self._listener.start()
         self._start_time = time.time()
         logger.info("Hardware simulator started.")
-        logger.info("Arrows=move, Space(x2)=left-click, Space(hold)=right-click")
-        logger.info("L/R+N(x2)=double-click, U+Up=scroll-up, D+Down=scroll-down")
+        logger.info("Arrows=move, Space(x2)=left-click, Space(hold)=right-click, Space(x3)=double-click")
+        logger.info("Space(x3)=double-click, L/R+N(x2)=center-cursor, U+Up=scroll-up, D+Down=scroll-down")
         logger.info("L+Left=back, R+Right=forward, L/R+W=window-switch, Q=quit")
 
     def stop(self):
