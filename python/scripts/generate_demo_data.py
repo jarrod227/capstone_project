@@ -92,7 +92,7 @@ def generate_blink_event(blink_duration_s: float = 0.15,
     Generate one blink embedded in baseline context, all labeled 'blink'.
 
     A real blink lasts ~150ms (30 samples), but the training window is
-    100 samples (0.5s). We pad with baseline before and after so the
+    200 samples (1.0s). We pad with baseline before and after so the
     'blink' label covers enough samples for the 70% majority threshold.
     """
     n_blink = int(blink_duration_s * FS)
@@ -124,6 +124,21 @@ def generate_double_blink() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[st
     eog_h = np.concatenate([blink1_eh, gap_eh, blink2_eh])
     gyro = np.vstack([blink1_gyro, gap_gyro, blink2_gyro])
     labels = ['double_blink'] * len(eog_v)
+    return eog_v, eog_h, gyro, labels
+
+
+def generate_triple_blink() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    """Generate triple blink: three quick blinks with ~250ms gaps."""
+    blink1_ev, blink1_eh, blink1_gyro, _ = generate_single_blink(0.12)
+    gap1_ev, gap1_eh, gap1_gyro, _ = generate_idle(0.25)
+    blink2_ev, blink2_eh, blink2_gyro, _ = generate_single_blink(0.12)
+    gap2_ev, gap2_eh, gap2_gyro, _ = generate_idle(0.25)
+    blink3_ev, blink3_eh, blink3_gyro, _ = generate_single_blink(0.12)
+
+    eog_v = np.concatenate([blink1_ev, gap1_ev, blink2_ev, gap2_ev, blink3_ev])
+    eog_h = np.concatenate([blink1_eh, gap1_eh, blink2_eh, gap2_eh, blink3_eh])
+    gyro = np.vstack([blink1_gyro, gap1_gyro, blink2_gyro, gap2_gyro, blink3_gyro])
+    labels = ['triple_blink'] * len(eog_v)
     return eog_v, eog_h, gyro, labels
 
 
@@ -345,6 +360,7 @@ def generate_session(session_id: int = 0,
     event_generators = {
         'blink': generate_blink_event,
         'double_blink': generate_double_blink,
+        'triple_blink': generate_triple_blink,
         'long_blink': generate_long_blink,
         'look_up': generate_look_up,
         'look_down': generate_look_down,
