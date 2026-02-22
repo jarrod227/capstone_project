@@ -58,7 +58,18 @@ python -m scripts.generate_demo_data --output ../data/raw   # ~10s, deterministi
 python -m scripts.train_model --data ../data/raw             # ~15s, ~98% CV accuracy
 ```
 
-### 2. Run
+### 2. Collect Training Data (optional, requires hardware)
+
+```bash
+cd python
+python -m scripts.collect_data --port COM4
+```
+
+Label keys during recording: `0`=idle `1`=blink `2`=double_blink `3`=triple_blink `4`=long_blink `5`=look_up `6`=look_down `7`=look_left `8`=look_right, `ESC`=stop and save.
+
+Procedure: press label key before gesture → perform gesture → press `0` to return to idle.
+
+### 3. Run
 
 3 modes × 3 data sources — any combination works (`cd python` first):
 
