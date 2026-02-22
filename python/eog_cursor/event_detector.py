@@ -7,9 +7,10 @@ Implements a state machine that distinguishes:
   - Double blink  → left click
   - Triple blink  → double click
   - Long blink    → right click
-  - Look up/down  → used for scroll fusion
-  - Look left     → browser back
-  - Look right    → browser forward
+  - Look up/down  → scroll (requires head tilt fusion in controller)
+  - Look left/right → cursor freeze (enables nod/roll while frozen)
+  - Look left + head turn left  → browser back (requires fusion in controller)
+  - Look right + head turn right → browser forward (requires fusion in controller)
   - Head roll     → window switch  (requires cursor_frozen / looking left or right)
   - Double nod    → center cursor  (requires cursor_frozen / looking left or right)
 
