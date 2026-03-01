@@ -102,7 +102,6 @@
 
 **Q: If you could redo this project, what would you change?**
 
-- *(Possible answers:)*
 - Use SPI instead of I2C for faster IMU reads
 - Add wireless (BLE) to eliminate the USB tether
 - Implement adaptive thresholds that calibrate per user
@@ -120,10 +119,6 @@
 - Config: all 100+ tunable parameters in one `config.py` file
 - Tests: 70 tests across 4 test files, runnable with `pytest`
 - Docs: technical write-ups for Kalman filter math, state-space derivation, data flow diagrams
-
-**Q: How did your team collaborate?**
-
-- *(Fill in: Git workflow, task division, communication tools, code reviews, etc.)*
 
 ---
 
