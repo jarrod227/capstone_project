@@ -14,10 +14,6 @@
 - Python side does signal processing (low-pass filter, Kalman filter), event detection (blink/gaze state machine), and cursor control (threshold, state-space, or ML mode)
 - Practical application: accessibility for users who cannot use a traditional mouse
 
-**Q: What was your specific role / contribution?**
-
-- *(Fill in your own responsibilities here)*
-
 ---
 
 ## 2. Design Decisions
