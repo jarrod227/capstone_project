@@ -10,6 +10,8 @@ The included `firmware.ioc` is the CubeMX project file for the reference board. 
 |------------|----------|------|---------|
 | I2C1 | Fast Mode 400kHz | PB6 (SCL), PB7 (SDA) | MPU9250 gyroscope |
 | USART2 | 115200 baud, 8N1, Async | PA2 (TX), PA3 (RX) | Serial output to PC (internally routed to ST-Link on Nucleo — no wiring needed) |
+| DMA1 Ch7 | Memory→Periph, Byte, Normal | — | Non-blocking USART2 TX (ping-pong double buffer) |
+| TIM6 | Prescaler=79, Period=499 | — | 200Hz sampling timer (5.000ms precise) |
 | ADC1 | IN1 Single-ended, 12-bit | PA0 | Vertical EOG |
 | ADC2 | IN1 Single-ended, 12-bit | PA4 | Horizontal EOG |
 | GPIO Output | Push-Pull, No Pull | PA5 | LED indicator |
@@ -26,13 +28,13 @@ CubeMX regeneration **overwrites** `main.c` outside of `USER CODE` blocks. After
 /* USER CODE END Includes */
 ```
 
-Then copy the application logic (ADC reads, I2C read, UART transmit, timing loop) from the reference `main.c` into the corresponding `USER CODE` blocks in the regenerated file:
+Then copy the application logic (ADC reads, I2C read, DMA UART transmit, TIM6 timing) from the reference `main.c` into the corresponding `USER CODE` blocks in the regenerated file:
 
 | Block | Content to add |
 |-------|---------------|
-| `USER CODE BEGIN PV` | `tx_buf`, `gyro_data` variable declarations |
-| `USER CODE BEGIN 2` | MPU9250 init + startup delay |
-| `USER CODE BEGIN WHILE` | Main loop body (ADC + I2C + snprintf + UART + timing) |
+| `USER CODE BEGIN PV` | `tx_buf[2][80]` ping-pong buffers, `dma_busy`, `tick_200hz`, `gyro_data` |
+| `USER CODE BEGIN 2` | MPU9250 init + startup delay + `HAL_TIM_Base_Start_IT(&htim6)` |
+| `USER CODE BEGIN WHILE` | Main loop body (wait TIM6 flag + ADC + I2C + snprintf + DMA transmit) |
 
 > **Tip:** Before regenerating, back up your working `main.c`. Diff it against the new one to see exactly what CubeMX changed.
 
