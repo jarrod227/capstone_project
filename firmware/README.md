@@ -43,8 +43,6 @@ Then copy the application logic (ADC reads, I2C read, UART transmit, timing loop
 | **3.3V** | Nucleo 3.3V | Power supply |
 | **GND** | Nucleo GND | Common ground |
 | **OUTPUT** | STM32 ADC pin | Analog EOG signal |
-| **LO+** | (optional) GPIO | Leads-off detection (not used in firmware) |
-| **LO-** | (optional) GPIO | Leads-off detection (not used in firmware) |
 
 - AD8232 #1 (Vertical EOG): **OUTPUT → PA0** (ADC1)
 - AD8232 #2 (Horizontal EOG): **OUTPUT → PA4** (ADC2)
