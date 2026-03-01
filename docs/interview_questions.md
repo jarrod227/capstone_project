@@ -87,7 +87,6 @@
 
 **Q: What was the hardest technical challenge?**
 
-- *(Pick one or more that you personally dealt with:)*
 - **Blink vs. gaze disambiguation**: both cause vertical EOG changes — solved with amplitude threshold + duration-based state machine
 - **Gyro drift**: cursor slowly moved on its own — solved with Kalman filter bias tracking
 - **False click triggers**: single involuntary blinks caused clicks — solved by requiring double blink (single blink is ignored)
