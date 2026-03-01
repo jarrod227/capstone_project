@@ -43,9 +43,12 @@ Then copy the application logic (ADC reads, I2C read, UART transmit, timing loop
 | **3.3V** | Nucleo 3.3V | Power supply |
 | **GND** | Nucleo GND | Common ground |
 | **OUTPUT** | STM32 ADC pin | Analog EOG signal |
+| **RA** | Electrode (−) | Inverting input |
+| **LA** | Electrode (+) | Non-inverting input |
+| **RL** | Electrode (REF) | Reference / right leg drive |
 
-- AD8232 #1 (Vertical EOG): **OUTPUT → PA0** (ADC1)
-- AD8232 #2 (Horizontal EOG): **OUTPUT → PA4** (ADC2)
+- AD8232 #1 (Vertical EOG): **OUTPUT → PA0** (ADC1), RA = below eye, LA = above eye, RL = forehead
+- AD8232 #2 (Horizontal EOG): **OUTPUT → PA4** (ADC2), RA = right outer canthus, LA = left outer canthus, RL = forehead
 
 ## Serial Debug Notes
 
