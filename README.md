@@ -166,6 +166,31 @@ Scroll and navigation require **both eye gaze and head motion** to agree:
 
 **Electrode placement:** Vertical pair (V+/V-) above and below one eye → eog_v. Horizontal pair (L/R) at outer canthi of both eyes → eog_h. Reference on forehead.
 
+### AD8232 Evaluation Board Wiring
+
+Each AD8232 evaluation board has the following connections:
+
+| AD8232 Board Pin | Connect To | Notes |
+|------------------|-----------|-------|
+| **3.3V** | Nucleo 3.3V | Power supply |
+| **GND** | Nucleo GND | Common ground |
+| **OUTPUT** | STM32 ADC pin | Analog EOG signal (0–3.3V) |
+| **LO+** | (optional) STM32 GPIO | Leads-off detection positive (HIGH = electrode disconnected) |
+| **LO-** | (optional) STM32 GPIO | Leads-off detection negative (HIGH = electrode disconnected) |
+
+Pin mapping for the two AD8232 boards:
+
+| Board | OUTPUT → | Electrodes |
+|-------|----------|------------|
+| AD8232 #1 (Vertical EOG) | **PA0** (ADC1) | V+ above eye, V- below eye, REF on forehead |
+| AD8232 #2 (Horizontal EOG) | **PA4** (ADC2) | L at left outer canthus, R at right outer canthus, REF on forehead |
+
+> **Note:** LO+/LO- are optional — the firmware does not use leads-off detection. If you want to monitor electrode contact, connect them to spare GPIOs and check in code.
+
+### Serial Connection (USART2)
+
+On Nucleo boards, **PA2 (TX) and PA3 (RX) are internally routed to the ST-Link virtual COM port** via the onboard debug interface. **No external wiring is needed** — just connect the Nucleo's USB cable to your PC and a virtual serial port appears (`/dev/ttyACM0` on Linux, `COM4` on Windows).
+
 **Firmware:** Reference code in `firmware/`, developed with STM32CubeMX + STM32CubeIDE. The included `firmware.ioc` is the CubeMX project for STM32F303RETx (Nucleo-64) — open it to regenerate HAL code, or create a new project for your board. Data packet format: `timestamp,eog_v,eog_h,gyro_x,gyro_y,gyro_z\r\n` at 115200 baud. See [docs/data_flow.md](docs/data_flow.md#firmware-stm32) for details.
 
 ## Configuration
