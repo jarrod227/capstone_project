@@ -166,7 +166,7 @@ Scroll and navigation require **both eye gaze and head motion** to agree:
 
 **Electrode placement:** Vertical pair (V+/V-) above and below one eye → eog_v. Horizontal pair (L/R) at outer canthi of both eyes → eog_h. Reference on forehead.
 
-**Firmware:** Reference code in `firmware/`, developed with STM32CubeMX + STM32CubeIDE. The included `firmware.ioc` is the CubeMX project for STM32F303RETx (Nucleo-64) — open it to regenerate HAL code, or create a new project for your board. Data packet format: `timestamp,eog_v,eog_h,gyro_x,gyro_y,gyro_z\r\n` at 115200 baud. See [docs/data_flow.md](docs/data_flow.md#firmware-stm32) for details.
+**Firmware:** Reference code in `firmware/`, developed with STM32CubeMX + STM32CubeIDE. The included `firmware.ioc` is the CubeMX project for STM32F303RETx (Nucleo-64) — open it to regenerate HAL code, or create a new project for your board. Data packet format: `timestamp,eog_v,eog_h,gyro_x,gyro_y,gyro_z\r\n` at 115200 baud. See [firmware/README.md](firmware/README.md) for AD8232 wiring, serial debug, and CubeMX regeneration instructions. See [docs/data_flow.md](docs/data_flow.md#firmware-stm32) for the data pipeline.
 
 ## Configuration
 
