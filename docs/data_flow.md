@@ -279,20 +279,21 @@ The **`.ioc` file** (`firmware/firmware.ioc`) is CubeMX's project file — it st
 
 ```
 firmware/firmware.ioc (CubeMX project file)
-    │  Peripherals: ADC1 (PA0), ADC2 (PA4), I2C1, USART2 (115200 baud)
+    │  Peripherals: ADC1 (PA0), ADC2 (PA4), I2C1, USART2 (115200 baud),
+    │               DMA1 Ch7 (USART2_TX), TIM6 (200Hz)
     │  Open in CubeMX → Generate Code → HAL initialization stubs
     ▼
 STM32CubeIDE project
     │
-    ├─→ firmware/Core/Src/main.c         # Main loop: read ADC×2 + I2C gyro, UART TX @200Hz
+    ├─→ firmware/Core/Src/main.c         # Main loop: read ADC×2 + I2C gyro, DMA UART TX @200Hz
     ├─→ firmware/Core/Src/mpu9250.c      # MPU9250/MPU6050 I2C driver (gyro only)
     └─→ firmware/Core/Inc/mpu9250.h      # Driver header
 
-    Main loop (5ms period):
+    Main loop (TIM6-driven 5ms period):
       1. HAL_ADC_Start → read eog_v (PA0) + eog_h (PA4)
       2. MPU9250_ReadGyro → read gyro_x, gyro_y, gyro_z via I2C
       3. snprintf → "timestamp,eog_v,eog_h,gyro_x,gyro_y,gyro_z\r\n"
-      4. HAL_UART_Transmit → USB serial to PC
+      4. HAL_UART_Transmit_DMA → non-blocking USB serial to PC (ping-pong buffers)
 ```
 
 **Setup workflow:** Open `firmware/firmware.ioc` in CubeMX (or create a new project for your board) → generate code → open in CubeIDE → drop in `main.c` and `mpu9250.c` → build and flash.
@@ -316,5 +317,5 @@ STM32CubeIDE project
 | `scripts/visualize.py` | Real-time 3-subplot signal visualization |
 | `scripts/collect_data.py` | Real-time labeled data collection from hardware |
 | `scripts/train_model.py` | SVM training + cross-validation |
-| `firmware/Core/Src/main.c` | STM32 main loop: dual ADC + I2C gyro + UART TX @200Hz |
+| `firmware/Core/Src/main.c` | STM32 main loop: dual ADC + I2C gyro + DMA UART TX @200Hz (TIM6) |
 | `firmware/Core/Src/mpu9250.c` | MPU9250/MPU6050 I2C driver (gyro only) |
