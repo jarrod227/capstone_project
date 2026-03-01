@@ -105,7 +105,7 @@ python main.py --port COM4 --mode ml          --kb
 │   ├── Core/Inc/
 │   │   └── mpu9250.h           # MPU9250 I2C driver header
 │   └── Core/Src/
-│       ├── main.c              # Main loop: dual ADC + I2C + UART @200Hz
+│       ├── main.c              # Main loop: dual ADC + I2C + DMA UART @200Hz (TIM6)
 │       └── mpu9250.c           # MPU9250 I2C driver
 │
 ├── python/                      # PC-side application
