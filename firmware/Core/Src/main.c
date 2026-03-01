@@ -6,7 +6,7 @@
  * transmits CSV packets over UART at 200Hz.
  *
  * Hardware connections:
- *   - AD8232 #1 OUT -> PA0 (ADC1 Channel 0) - vertical EOG
+ *   - AD8232 #1 OUT -> PA0 (ADC1 Channel 1) - vertical EOG
  *   - AD8232 #2 OUT -> PA4 (ADC2 Channel 1) - horizontal EOG
  *   - MPU9250 SDA   -> PB7 (I2C1)
  *   - MPU9250 SCL   -> PB6 (I2C1)
@@ -177,7 +177,7 @@ static void MX_ADC1_Init(void)
      *   Resolution: 12-bit
      *   Scan mode: Disabled (single channel)
      *   Continuous mode: Disabled
-     *   Channel: 0 (PA0) - vertical EOG
+     *   Channel: 1 (PA0) - vertical EOG
      */
 }
 
