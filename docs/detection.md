@@ -14,14 +14,14 @@ Blink waveform:                    Gaze shift (look up):
 eog_v                              eog_v
   ^                                  ^
   │     ╭──╮                         │  ╭──────────────╮
-  │    ╱    ╲    Peak > 3000         │ ╱                ╲   ~2800, sustained
+  │    ╱    ╲    Peak > 2600         │ ╱                ╲   ~2400, sustained
   │───╱──────╲── Baseline 2048       │╱──────────────────╲─ Baseline 2048
   │                                  │
   └──────────> time                  └──────────────────> time
      50-250ms                            seconds
 ```
 
-**Key difference**: blinks are fast transient spikes (50–250ms) with peak > 3000; gaze shifts are slower, sustained deviations (~2800) that stay below the blink threshold.
+**Key difference**: blinks are fast transient spikes (50–250ms) with peak > 2600; gaze shifts are slower, sustained deviations (~2400) that stay below the blink threshold.
 
 ## Blink Detection State Machine
 
@@ -36,7 +36,7 @@ The `BlinkDetector` discriminates between double blinks (→ left click), triple
                  ┌──────┐                                                  │
           ┌─────>│ IDLE │<──────────────────────────────────┐              │
           │      └──┬───┘                                   │              │
-          │         │ eog > BLINK_THRESHOLD (3000)          │              │
+          │         │ eog > BLINK_THRESHOLD (2600)          │              │
           │         │ record blink_start_time               │              │
           │         ▼                                       │              │
           │   ┌──────────┐                                  │              │
@@ -110,7 +110,7 @@ The `BlinkDetector` discriminates between double blinks (→ left click), triple
 
 | Parameter | Value | Purpose |
 |-----------|-------|---------|
-| `BLINK_THRESHOLD` | 3000 | ADC value for rising/falling edge detection |
+| `BLINK_THRESHOLD` | 2600 | ADC value for rising/falling edge detection |
 | `BLINK_MIN_DURATION` | 50ms | Debounce — reject noise spikes |
 | `BLINK_MAX_DURATION` | 250ms | Maximum duration for a normal blink |
 | `DOUBLE_BLINK_WINDOW` | 600ms | Maximum gap between two blinks to count as double |
@@ -123,8 +123,8 @@ The `BlinkDetector` discriminates between double blinks (→ left click), triple
 
 ### Why Not Just Peak Detection?
 
-A simple "eog > 3000" check cannot distinguish:
-- **Blink** (50–250ms spike) vs **long blink** (>=400ms sustained) vs **sustained look up** (seconds-long shift at ~2800)
+A simple "eog > 2600" check cannot distinguish:
+- **Blink** (50–250ms spike) vs **long blink** (>=400ms sustained) vs **sustained look up** (seconds-long shift at ~2400)
 - **Single blink** (ignored) vs **double blink** (left click) vs **triple blink** (double click)
 - **Noise spike** (<50ms) vs **real blink**
 
@@ -138,14 +138,14 @@ The `GazeDetector` handles sustained vertical gaze shifts for scroll fusion.
 
 ```python
 # event_detector.py — GazeDetector.update()
-if eog > config.BLINK_THRESHOLD:  # > 3000
+if eog > config.BLINK_THRESHOLD:  # > 2600
     self.current_gaze = EOGEvent.NONE
     return EOGEvent.NONE
 ```
 
-Any signal above 3000 is handed off to the `BlinkDetector`. The `GazeDetector` only processes signals in the "gaze zone":
-- **Look Up**: 2800 < eog_v < 3000 (sustained for >100ms)
-- **Look Down**: eog_v < 1200 (sustained for >100ms)
+Any signal above 2600 is handed off to the `BlinkDetector`. The `GazeDetector` only processes signals in the "gaze zone":
+- **Look Up**: 2400 < eog_v < 2600 (sustained for >100ms)
+- **Look Down**: eog_v < 1600 (sustained for >100ms)
 
 This prevents a blink spike from being misclassified as a gaze event.
 
@@ -153,17 +153,17 @@ This prevents a blink spike from being misclassified as a gaze event.
 
 ```
 ADC value
-  3200 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  3000 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
          BLINK ZONE (BlinkDetector only)
-  3000 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ← BLINK_THRESHOLD
+  2600 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ← BLINK_THRESHOLD
          LOOK UP ZONE (GazeDetector)
-  2800 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ← LOOK_UP_THRESHOLD
+  2400 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ← LOOK_UP_THRESHOLD
          NEUTRAL ZONE (idle)
   2048 - - - - - - - - - - - - - - - - - - - - -  ← Baseline
          NEUTRAL ZONE (idle)
-  1200 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ← LOOK_DOWN_THRESHOLD
+  1600 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ← LOOK_DOWN_THRESHOLD
          LOOK DOWN ZONE (GazeDetector)
-   800 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  1200 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
 ```
 
 ## Horizontal Gaze Detection
@@ -174,8 +174,8 @@ The `HorizontalGazeDetector` operates on the eog_h channel with similar logic bu
 
 | Action | Eye Condition | Head Condition |
 |--------|--------------|----------------|
-| Browser Back | eog_h < 1200 for >150ms | gy < -300 (head turning left) |
-| Browser Forward | eog_h > 2800 for >150ms | gy > 300 (head turning right) |
+| Browser Back | eog_h < 1600 for >150ms | gy < -300 (head turning left) |
+| Browser Forward | eog_h > 2400 for >150ms | gy > 300 (head turning right) |
 
 ## ML-Based Detection (Alternative)
 
@@ -194,21 +194,6 @@ In `--mode ml`, the SVM classifier replaces the threshold-based state machine. I
 | `derivative_variance` | Roughness/regularity of change |
 
 These 10 features are extracted from **both** eog_v and eog_h channels (20 total), allowing the classifier to distinguish all 9 event classes (including triple blink and horizontal gaze directions that are invisible on eog_v alone).
-
-## Head Roll Detection
-
-The `HeadRollDetector` detects intentional head roll flicks (quick lateral tilts) for window switching (Alt+Tab). It requires the gyro_z spike to **return below threshold within `HEAD_ROLL_MAX_DURATION` (0.3s)** — slow tilts or sustained head positions are ignored.
-
-**Cursor freeze prerequisite:** Head roll is **only active when the cursor is frozen** (user is looking left or right, i.e. eog_h beyond horizontal gaze thresholds). During normal head movement, gyro_z changes are ignored by the detector, preventing accidental window switches. When the cursor is not frozen, the detector's internal state is reset so stale spikes are not carried over.
-
-**Workflow:** Look left/right (cursor freezes) → roll head (window switch fires) → look back to center (cursor unfreezes after a short grace period).
-
-| Parameter | Value | Purpose |
-|-----------|-------|---------|
-| `HEAD_ROLL_THRESHOLD` | 3000 | Minimum \|gz\| for roll detection |
-| `HEAD_ROLL_MAX_DURATION` | 0.3s | gz must return below threshold within this time |
-| `HEAD_ROLL_COOLDOWN` | 1.0s | Prevent re-trigger |
-| `HEAD_ROLL_SUPPRESS_DURATION` | 0.3s | Suppress cursor movement after roll (grace period when looking back to center) |
 
 ## Double Nod Detection
 

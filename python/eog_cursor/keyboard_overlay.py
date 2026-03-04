@@ -19,7 +19,7 @@ Key mapping (EOG events only — IMU still comes from hardware):
 import logging
 
 from . import config
-from .event_detector import BlinkDetector, GazeDetector, HorizontalGazeDetector, EOGEvent
+from .event_detector import BlinkDetector, GazeDetector, HorizontalGazeDetector
 
 logger = logging.getLogger(__name__)
 

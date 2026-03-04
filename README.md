@@ -135,7 +135,8 @@ python main.py --port COM4 --mode ml          --kb
 │   ├── detection.md             # Blink state machine, signal zones, waveform analysis
 │   ├── state_space.md           # Matrix derivation, velocity retention analysis, stability proof
 │   ├── kalman_filter.md         # Kalman filter derivation, steady-state analysis, parameter tuning
-│   └── performance.md           # Evaluation metrics template (ML + real hardware)
+│   ├── performance.md           # Evaluation metrics template (ML + real hardware)
+│   └── interview_questions.md   # Technical Q&A for project understanding
 └── requirements.txt
 ```
 
@@ -150,10 +151,10 @@ Scroll and navigation require **both eye gaze and head motion** to agree:
 
 | Action | Eye Signal | Head Signal |
 |--------|-----------|-------------|
-| Scroll Up | eog_v > 2800 (look up) | gx < -300 (tilt up) |
-| Scroll Down | eog_v < 1200 (look down) | gx > 300 (tilt down) |
-| Browser Back | eog_h < 1200 (look left) | gy < -300 (turn left) |
-| Browser Fwd | eog_h > 2800 (look right) | gy > 300 (turn right) |
+| Scroll Up | eog_v > 2400 (look up) | gx < -300 (tilt up) |
+| Scroll Down | eog_v < 1600 (look down) | gx > 300 (tilt down) |
+| Browser Back | eog_h < 1600 (look left) | gy < -300 (turn left) |
+| Browser Fwd | eog_h > 2400 (look right) | gy > 300 (turn right) |
 
 ## Hardware
 
@@ -184,7 +185,7 @@ KALMAN_R = 500.0                # Kalman measurement noise (gyro sensor noise va
 CURSOR_SENSITIVITY = 0.01      # Direct gyro-to-pixel ratio (no inertia)
 
 # --- threshold & statespace modes ---
-BLINK_THRESHOLD = 3000         # ADC value for blink detection (ML mode uses SVM instead)
+BLINK_THRESHOLD = 2600         # ADC value for blink detection (ML mode uses SVM instead)
 
 # --- statespace & ml modes ---
 SS_VELOCITY_RETAIN = 0.95      # Cursor glide per step (0.8=snappy, 0.99=floaty)
