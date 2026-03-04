@@ -21,6 +21,7 @@
   * NOTE: This file only contains USER CODE sections.
   *       CubeMX generates the full file from the .ioc configuration.
   *       Copy the USER CODE blocks into the CubeMX-generated main.c.
+  *       In CubeMX peripheral init order, DMA must come BEFORE USART2.
   *
   ******************************************************************************
   */
@@ -42,31 +43,8 @@ static volatile uint8_t tick_200hz = 0;   /* Set by TIM6 ISR every 5ms */
 static MPU9250_GyroRaw gyro_data;
 /* USER CODE END PV */
 
-/* Private function prototypes (CubeMX generates implementations) */
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
-static void MX_ADC1_Init(void);
-static void MX_ADC2_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_USART2_UART_Init(void);
-static void MX_TIM6_Init(void);
-void Error_Handler(void);
-
 int main(void)
 {
-  HAL_Init();
-  SystemClock_Config();
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();          /* DMA must be initialized BEFORE USART2 */
-  MX_ADC1_Init();
-  MX_ADC2_Init();
-  MX_I2C1_Init();
-  MX_USART2_UART_Init();
-  MX_TIM6_Init();
-
   /* USER CODE BEGIN 2 */
 
     /* Initialize IMU */
