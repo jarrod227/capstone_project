@@ -53,8 +53,8 @@
 
 **Q: How does your blink detection work?**
 
-- 4-state state machine: IDLE → BLINK_START → BLINK_END → WAIT_NEXT
-- Vertical EOG spike above threshold (3000) = blink onset
+- 4-state state machine: IDLE → IN_BLINK → WAIT_SECOND → WAIT_THIRD
+- Vertical EOG spike above threshold (2600) = blink onset
 - Blink duration determines type: < 250 ms = short blink, > 400 ms = long blink (right click)
 - After first blink ends, we wait up to 600 ms for a second blink
 - Double blink = left click, triple blink = double click, single blink = ignored (prevents false triggers)
@@ -131,7 +131,7 @@ Keep these numbers in your head for rapid-fire questions:
 | Sampling rate | 200 Hz (5 ms period) |
 | EOG bandwidth | 0–30 Hz |
 | ADC resolution | 12-bit (0–4095) |
-| Blink threshold | 3000 (vertical EOG) |
+| Blink threshold | 2600 (vertical EOG) |
 | Short blink duration | < 250 ms |
 | Long blink duration | > 400 ms |
 | Double blink window | 600 ms |
