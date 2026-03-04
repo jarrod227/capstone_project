@@ -8,11 +8,11 @@
 
 **Q: Can you describe your capstone project in 1-2 minutes?**
 
-- We built a hands-free cursor control system using eye movements (EOG) and head motion (IMU)
-- Two AD8232 boards capture vertical and horizontal eye signals, an MPU9250 tracks head rotation
-- STM32 samples all sensors at 200 Hz and streams data over UART to a PC
-- Python side does signal processing (low-pass filter, Kalman filter), event detection (blink/gaze state machine), and cursor control (threshold, state-space, or ML mode)
-- Practical application: accessibility for users who cannot use a traditional mouse
+- Basically, we built a hands-free mouse — you move the cursor by turning your head, click by blinking, and scroll by looking up or down
+- On the hardware side, there are two small amplifier boards (AD8232) that pick up electrical signals from eye movements, and a gyroscope (MPU9250) on the head that senses rotation
+- An STM32 board reads all the sensors 200 times a second and sends the data to a PC over USB
+- The Python software then does the heavy lifting — filtering out noise, figuring out what action the user is doing, and actually moving the cursor
+- The whole point is to help people who can't use a regular mouse, like someone with a spinal cord injury
 
 ---
 
@@ -20,42 +20,39 @@
 
 **Q: Why did you choose STM32 over Arduino or Raspberry Pi?**
 
-- STM32 has hardware timers (TIM6) for precise 200 Hz sampling — Arduino `millis()` has jitter
-- DMA for non-blocking UART TX — Arduino `Serial.print()` blocks the CPU
-- Dual independent ADCs — can read both EOG channels without multiplexing delay
-- Real-time deterministic timing matters for signal processing downstream
-- Raspberry Pi is overkill and runs Linux (non-real-time OS), not ideal for precise sensor sampling
+- Mainly because of timing precision — we need exactly 200 samples per second, and STM32 has hardware timers that can do that dead-on. Arduino's `millis()` has jitter, which messes up our filters
+- STM32 also has DMA, so it can send data over UART in the background without blocking the CPU. Arduino's `Serial.print()` stalls everything until it's done
+- It has dual ADCs too, so we can read both eye channels at the same time without switching back and forth
+- Raspberry Pi would work for the processing side, but it runs Linux which isn't real-time — not great for precise sensor sampling
 
 **Q: Why 200 Hz sampling rate?**
 
-- EOG signals are 0–30 Hz bandwidth, Nyquist requires > 60 Hz minimum
-- 200 Hz gives comfortable oversampling (>6x) for clean filtering
-- Fast enough to detect rapid blinks (~150–400 ms) with good temporal resolution
-- Not so fast that it overwhelms UART bandwidth or PC processing
+- Eye signals go up to about 30 Hz, so by Nyquist you need at least 60 Hz. 200 gives us plenty of headroom — over 6x oversampling
+- It's also fast enough to catch quick blinks, which can be as short as 150 ms
+- But not so fast that it floods the serial port or overwhelms the PC. It's a sweet spot
 
 **Q: Why use DMA for UART instead of polling or interrupt?**
 
-- Polling (`HAL_UART_Transmit`) blocks the CPU — would miss the next 5 ms sample window
-- Byte-by-byte interrupts have overhead per byte
-- DMA transfers the entire formatted string (~40 bytes) in the background while the CPU reads the next set of sensors
-- Ping-pong double buffering: CPU fills buffer A while DMA sends buffer B, zero idle time
+- If we use polling, the CPU just sits there waiting for bytes to send — and at 115200 baud, a 40-byte packet takes about 3.5 ms. That's most of our 5 ms sample window gone
+- Interrupt-per-byte works but has overhead for each byte
+- DMA hands off the whole buffer to hardware and the CPU is free to go read the next set of sensors
+- We actually use a ping-pong setup: the CPU fills one buffer while DMA sends the other, so there's zero downtime
 
 **Q: How is DMA implemented in your firmware specifically?**
 
-- Two 80-byte buffers (`tx_buf[0]` and `tx_buf[1]`) form a ping-pong pair
-- `tx_idx ^= 1` swaps which buffer the CPU writes to vs which DMA sends
-- `HAL_UART_Transmit_DMA()` starts a non-blocking transfer; `dma_busy` flag prevents overlap
-- `HAL_UART_TxCpltCallback()` clears `dma_busy` when DMA finishes — without this callback, `dma_busy` stays 1 and only the first frame ever sends
-- Watchdog recovery: if `dma_stuck > 2` (DMA hung for >10 ms / 2 ticks), `HAL_UART_AbortTransmit()` force-resets
-- `HAL_UART_ErrorCallback()` clears overrun/framing/noise/parity error flags and aborts, preventing permanent UART lockup
-- Timing: 40 bytes at 115200 baud = ~3.5 ms transfer time, well within the 5 ms sample period
+- There are two 80-byte buffers that alternate — while DMA is sending one, the CPU writes into the other
+- A simple `tx_idx ^= 1` flips which buffer is active each cycle
+- `HAL_UART_Transmit_DMA()` kicks off a non-blocking send, and a `dma_busy` flag prevents us from starting another send before the current one finishes
+- The key thing people miss: you need the `TxCpltCallback` to clear that flag when DMA is done — without it, `dma_busy` stays stuck at 1 and only the first frame ever gets sent
+- There's also a watchdog: if DMA appears stuck for more than 2 ticks (~10 ms), we force-abort and reset
+- Error callback handles UART errors like overrun, so the system recovers instead of locking up permanently
+- The math works out nicely: 40 bytes at 115200 baud is about 3.5 ms, well within our 5 ms window
 
 **Q: Why split the system into STM32 firmware + Python PC software?**
 
-- STM32 handles time-critical sampling (deterministic 200 Hz)
-- Python handles compute-heavy processing (Kalman filter, ML inference, GUI control)
-- Separation of concerns: firmware is simple and reliable, Python is flexible and easy to iterate
-- Allows testing with CSV replay or simulator when hardware is unavailable
+- Each part does what it's best at — STM32 is great at precise, repetitive sampling; Python is great at complex processing and has all the libraries we need for Kalman filters, ML, mouse control
+- It also means we can test the Python side without hardware — just replay a CSV file or use a keyboard simulator
+- And the firmware stays dead simple — just read sensors, format a line, send it. Less code means fewer bugs in the hard-to-debug part
 
 ---
 
@@ -63,26 +60,26 @@
 
 **Q: How does your blink detection work?**
 
-- 4-state state machine: IDLE → IN_BLINK → WAIT_SECOND → WAIT_THIRD
-- Vertical EOG spike above threshold (2600) = blink onset
-- Blink duration determines type: < 250 ms = short blink, > 400 ms = long blink (right click)
-- After first blink ends, we wait up to 600 ms for a second blink
-- Double blink = left click, triple blink = double click, single blink = ignored (prevents false triggers)
+- It's a state machine with four states: IDLE, IN_BLINK, WAIT_SECOND, and WAIT_THIRD
+- When the vertical eye signal spikes above 2600, that's a blink starting
+- How long the eye stays closed tells us the type: under 250 ms is a normal blink, over 400 ms is a long blink which maps to right-click
+- After the first blink ends, we wait up to 600 ms to see if another blink comes
+- Two blinks in that window = left click, three = double click. A single blink by itself is just ignored — this prevents accidental clicks from involuntary blinks
 
 **Q: Explain your Kalman filter and why you need it.**
 
-- IMU gyroscope has slowly drifting bias — raw readings drift even when the head is still
-- 2-state Kalman filter per axis: tracks true angular velocity and bias simultaneously
-- Prediction step: bias is modeled as a random walk (slow change)
-- Update step: measurement corrects both states
-- Result: clean motion signal with bias removed, cursor doesn't drift when head is stationary
+- The gyroscope has this annoying problem: even when your head is perfectly still, the reading slowly drifts. Without fixing this, the cursor would creep across the screen on its own
+- So we run a Kalman filter that tracks two things per axis: the actual angular velocity, and the bias (that drifting offset)
+- Each cycle, it predicts where those values should be, then corrects based on the new reading
+- The bias is modeled as changing very slowly, and the angular velocity can change fast — the filter figures out the right balance
+- End result: when you stop moving your head, the cursor actually stops
 
 **Q: What is the state-space cursor model?**
 
-- 4-state system: [pos_x, vel_x, pos_y, vel_y]
-- Gyro input drives velocity, position integrates from velocity
-- Velocity decay factor (0.95): cursor glides naturally and stops, like a physical object with friction
-- Feels more natural than directly mapping gyro → pixel displacement (threshold mode)
+- Instead of directly converting gyro readings to pixel movement, we treat the cursor like a physical object with position and velocity
+- The gyro input drives the velocity, and position updates from velocity — just like real physics
+- There's a decay factor of 0.95 on velocity, so when you stop turning your head, the cursor glides to a stop naturally instead of freezing instantly
+- It feels way more like a real mouse than the naive approach of "gyro value = pixel jump"
 
 **Q: How does sensor fusion work in your system?**
 
@@ -97,26 +94,26 @@
 
 **Q: What was the hardest technical challenge?**
 
-- **Blink vs. gaze disambiguation**: both cause vertical EOG changes — solved with amplitude threshold + duration-based state machine
-- **Gyro drift**: cursor slowly moved on its own — solved with Kalman filter bias tracking
-- **False click triggers**: single involuntary blinks caused clicks — solved by requiring double blink (single blink is ignored)
-- **Timing jitter**: inconsistent sampling broke filter assumptions — solved with hardware timer (TIM6) instead of software delay
+- **Blink vs. looking up** — both push the vertical eye signal upward, so they look similar. We solved it by checking duration: blinks are quick spikes (under 250 ms), looking up is sustained. Amplitude matters too — blinks tend to be sharper
+- **Gyro drift** — the cursor kept slowly moving on its own. This was the most frustrating one. Fixed it with the Kalman filter that tracks and removes the bias in real-time
+- **Accidental clicks** — people blink involuntarily all the time, so single blinks were causing random clicks. Solution: only double blink triggers a click. Single blinks are just ignored
+- **Sampling jitter** — at first we used software delays, which gave inconsistent timing and made the filters behave unpredictably. Switching to a hardware timer (TIM6) fixed it completely
 
 **Q: How did you test without hardware?**
 
-- Three data sources: real hardware, CSV replay, keyboard simulator
-- `generate_demo_data.py` creates deterministic synthetic data (seed=42) with known blink/gaze events
-- CSV replay lets us regression-test against recorded sessions
-- Keyboard simulator maps keys to sensor values for interactive testing
-- 70 unit tests covering event detection, signal processing, ML pipeline
+- We set up three ways to feed data into the system: real hardware, CSV replay, and a keyboard simulator
+- There's a script that generates synthetic data with known events — like "blink at t=2.0s, look left at t=5.0s" — so we can verify the detection code catches everything
+- CSV replay lets us record a real session once and re-test against it whenever we change the code
+- The keyboard simulator maps keys to sensor values so you can interactively test without electrodes
+- On top of that, we have about 70 unit tests covering event detection, signal processing, and the ML pipeline
 
 **Q: If you could redo this project, what would you change?**
 
-- Use SPI instead of I2C for faster IMU reads
-- Add wireless (BLE) to eliminate the USB tether
-- Implement adaptive thresholds that calibrate per user
-- Use a more powerful ML model (e.g., LSTM) for temporal gesture patterns
-- Add visual feedback overlay showing detected gaze direction
+- Switch from I2C to SPI for the IMU — it's faster and we don't really need I2C's multi-device addressing
+- Go wireless with BLE so there's no USB cable tethering the user to the computer
+- Make the thresholds auto-calibrate per user — right now the values are tuned for me, someone else might need different settings
+- Try a temporal ML model like an LSTM that can learn gesture patterns over time, not just static windows
+- Add a visual overlay showing what the system is detecting — useful for both debugging and user feedback
 
 ---
 
@@ -124,17 +121,17 @@
 
 **Q: How is your codebase organized?**
 
-- Firmware: `main.c` + `mpu9250.c/h` — minimal, only does sampling and transmission
-- Python: modular packages — `signal_processing`, `event_detector`, `cursor_control`, `ml_classifier`
-- Config: all 100+ tunable parameters in one `config.py` file
-- Tests: 70 tests across 4 test files, runnable with `pytest`
-- Docs: technical write-ups for Kalman filter math, state-space derivation, data flow diagrams
+- The firmware is minimal on purpose — just `main.c` for sampling logic and `mpu9250.c` for the IMU driver. That's it
+- Python side is split into modules: signal processing, event detection, cursor control, and ML classification. Each one is independent and testable
+- Every tunable parameter (over 100 of them) lives in one `config.py` file — so adjusting thresholds or filter settings is just changing a number, not hunting through code
+- 70 unit tests across 4 test files, all runnable with `pytest`
+- Documentation covers the math behind the Kalman filter, the state-space model derivation, and data flow diagrams
 
 ---
 
 ## 6. Quick Technical Facts
 
-Keep these numbers in your head for rapid-fire questions:
+Handy numbers for rapid-fire questions:
 
 | Topic | Value |
 |-------|-------|
