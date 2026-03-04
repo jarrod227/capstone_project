@@ -33,10 +33,10 @@
 
 **Q: Why use DMA for UART instead of polling or interrupt?**
 
-- If we use polling, the CPU just sits there waiting for bytes to send — and at 115200 baud, a 40-byte packet takes about 3.5 ms. That's most of our 5 ms sample window gone
-- Interrupt-per-byte works but has overhead for each byte
-- DMA hands off the whole buffer to hardware and the CPU is free to go read the next set of sensors
-- We actually use a ping-pong setup: the CPU fills one buffer while DMA sends the other, so there's zero downtime
+- Polling means the CPU writes each byte to the UART register and waits for the "transmit done" flag before sending the next one — it's stuck in a busy loop for the entire transfer. At 115200 baud, a 40-byte packet ties up the CPU for about 3.5 ms, which is most of our 5 ms sample window
+- Interrupt-per-byte is better — the CPU kicks off a byte and goes back to work, then gets interrupted when it's time to load the next byte. But you still get an interrupt for every single byte, so there's overhead
+- DMA is different because the DMA controller is a separate piece of hardware that moves data on its own. You just tell it "here's a buffer, here's how many bytes, go" — and then the CPU is completely free. It's not waiting, not getting interrupted, it just goes and reads the next set of sensors while the DMA controller feeds bytes to UART independently
+- On top of that, we use a ping-pong setup: the CPU fills one buffer while DMA sends the other, so there's zero downtime
 
 **Q: How is DMA implemented in your firmware specifically?**
 
