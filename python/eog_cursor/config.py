@@ -54,7 +54,7 @@ SS_DT = SAMPLE_PERIOD         # Time step for state equations
 
 # --- Blink Detection (vertical EOG) ---
 # A "blink" is eog_v > BLINK_THRESHOLD (large positive spike above baseline)
-BLINK_THRESHOLD = 3000        # ADC value above which = blink detected
+BLINK_THRESHOLD = 2600        # ADC value above which = blink detected
 BLINK_MIN_DURATION = 0.05     # seconds - minimum blink duration (debounce)
 BLINK_MAX_DURATION = 0.25     # seconds - max duration for a normal blink
 
@@ -72,12 +72,12 @@ LONG_BLINK_MAX_DURATION = 2.5 # seconds - cap to avoid accidental triggers
 LONG_BLINK_COOLDOWN = 1.0     # seconds - prevent re-trigger after long blink
 
 # --- Vertical Gaze (eog_v) → Scroll fusion ---
-LOOK_UP_THRESHOLD = 2800      # eog_v > this = looking up (sustained, not blink)
-LOOK_DOWN_THRESHOLD = 1200    # eog_v < this = looking down
+LOOK_UP_THRESHOLD = 2400      # eog_v > this = looking up (sustained, not blink)
+LOOK_DOWN_THRESHOLD = 1600    # eog_v < this = looking down
 
 # --- Horizontal Gaze (eog_h) + Head Turn (gy) → Back/Forward (eye-head fusion) ---
-LOOK_RIGHT_THRESHOLD = 2800   # eog_h > this = looking right
-LOOK_LEFT_THRESHOLD = 1200    # eog_h < this = looking left
+LOOK_RIGHT_THRESHOLD = 2400   # eog_h > this = looking right
+LOOK_LEFT_THRESHOLD = 1600    # eog_h < this = looking left
 HORIZONTAL_GAZE_COOLDOWN = 1.0  # seconds between back/fwd triggers
 # Back:    eye left (eog_h < LOOK_LEFT_THRESHOLD) + head left (gy < -GYRO_DEADZONE)
 # Forward: eye right (eog_h > LOOK_RIGHT_THRESHOLD) + head right (gy > GYRO_DEADZONE)
