@@ -34,6 +34,7 @@
 static char tx_buf[2][80];                /* Ping-pong buffers for DMA */
 static volatile uint8_t tx_idx = 0;       /* Index of buffer being filled */
 static volatile uint8_t dma_busy = 0;     /* 1 while DMA transfer in progress */
+static volatile uint8_t dma_stuck = 0;    /* Ticks since DMA started (watchdog) */
 static volatile uint8_t tick_200hz = 0;   /* Set by TIM6 ISR every 5ms */
 static MPU9250_GyroRaw gyro_data;
 /* USER CODE END PV */
@@ -134,12 +135,27 @@ int main(void)
                            gyro_data.y,
                            gyro_data.z);
 
+        /* --- DMA watchdog: force recovery if stuck > 10ms (2 ticks) --- */
+        if (dma_busy) {
+            dma_stuck++;
+            if (dma_stuck > 2) {
+                HAL_UART_AbortTransmit(&huart2);
+                dma_busy = 0;
+                dma_stuck = 0;
+            }
+        }
+
         /* --- Transmit via DMA (non-blocking) --- */
         if (!dma_busy) {
             uint8_t send_idx = tx_idx;
             tx_idx ^= 1;  /* Swap to other buffer for next iteration */
             dma_busy = 1;
-            HAL_UART_Transmit_DMA(&huart2, (uint8_t *)tx_buf[send_idx], len);
+            dma_stuck = 0;
+            if (HAL_UART_Transmit_DMA(&huart2, (uint8_t *)tx_buf[send_idx], len) != HAL_OK) {
+                /* Transmit call itself failed — reset immediately */
+                HAL_UART_AbortTransmit(&huart2);
+                dma_busy = 0;
+            }
         }
     }
     /* USER CODE END WHILE */
@@ -155,6 +171,28 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART2) {
         dma_busy = 0;
+        dma_stuck = 0;
+    }
+}
+
+/**
+ * @brief  UART error callback — recovers from DMA/UART errors.
+ *         Without this, an ORE or DMA error leaves dma_busy=1 forever.
+ */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART2) {
+        /* Clear all UART error flags (ORE, FE, NE, PE) */
+        __HAL_UART_CLEAR_OREFLAG(huart);
+        __HAL_UART_CLEAR_FEFLAG(huart);
+        __HAL_UART_CLEAR_NEFLAG(huart);
+        __HAL_UART_CLEAR_PEFLAG(huart);
+
+        /* Abort any in-flight DMA to reset the peripheral state */
+        HAL_UART_AbortTransmit(huart);
+
+        dma_busy = 0;
+        dma_stuck = 0;
     }
 }
 
