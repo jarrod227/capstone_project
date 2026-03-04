@@ -49,7 +49,7 @@ CURSOR_SENSITIVITY = 0.01     # Gyro-to-pixel scaling factor
 
 # --- Cursor Control (State-Space Model) ---
 SS_VELOCITY_RETAIN = 0.95     # Velocity retention per step (0.8=quick stop, 0.99=long glide)
-SS_SENSITIVITY = 0.05         # Input gain (gives ~half threshold speed + glide)
+SS_SENSITIVITY = 0.12         # Input gain (tuned for ~1800 px/s full-speed traversal)
 SS_DT = SAMPLE_PERIOD         # Time step for state equations
 
 # --- Blink Detection (vertical EOG) ---
