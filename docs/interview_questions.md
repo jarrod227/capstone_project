@@ -40,6 +40,16 @@
 - DMA transfers the entire formatted string (~40 bytes) in the background while the CPU reads the next set of sensors
 - Ping-pong double buffering: CPU fills buffer A while DMA sends buffer B, zero idle time
 
+**Q: How is DMA implemented in your firmware specifically?**
+
+- Two 80-byte buffers (`tx_buf[0]` and `tx_buf[1]`) form a ping-pong pair
+- `tx_idx ^= 1` swaps which buffer the CPU writes to vs which DMA sends
+- `HAL_UART_Transmit_DMA()` starts a non-blocking transfer; `dma_busy` flag prevents overlap
+- `HAL_UART_TxCpltCallback()` clears `dma_busy` when DMA finishes — without this callback, `dma_busy` stays 1 and only the first frame ever sends
+- Watchdog recovery: if `dma_stuck > 2` (DMA hung for >10 ms / 2 ticks), `HAL_UART_AbortTransmit()` force-resets
+- `HAL_UART_ErrorCallback()` clears overrun/framing/noise/parity error flags and aborts, preventing permanent UART lockup
+- Timing: 40 bytes at 115200 baud = ~3.5 ms transfer time, well within the 5 ms sample period
+
 **Q: Why split the system into STM32 firmware + Python PC software?**
 
 - STM32 handles time-critical sampling (deterministic 200 Hz)
