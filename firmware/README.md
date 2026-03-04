@@ -16,28 +16,6 @@ The included `firmware.ioc` is the CubeMX project file for the reference board. 
 | ADC2 | IN1 Single-ended, 12-bit | PA4 | Horizontal EOG |
 | GPIO Output | Push-Pull, No Pull | PA5 | LED indicator |
 
-## CubeMX Code Regeneration
-
-CubeMX regeneration **overwrites** `main.c` outside of `USER CODE` blocks. After regenerating, add the following includes inside the `/* USER CODE BEGIN Includes */` block:
-
-```c
-/* USER CODE BEGIN Includes */
-#include "mpu9250.h"   // IMU driver
-#include <stdio.h>     // snprintf
-#include <string.h>    // memcpy (if needed)
-/* USER CODE END Includes */
-```
-
-Then copy the application logic (ADC reads, I2C read, DMA UART transmit, TIM6 timing) from the reference `main.c` into the corresponding `USER CODE` blocks in the regenerated file:
-
-| Block | Content to add |
-|-------|---------------|
-| `USER CODE BEGIN PV` | `tx_buf[2][80]` ping-pong buffers, `dma_busy`, `tick_200hz`, `gyro_data` |
-| `USER CODE BEGIN 2` | MPU9250 init + startup delay + `HAL_TIM_Base_Start_IT(&htim6)` |
-| `USER CODE BEGIN WHILE` | Main loop body (wait TIM6 flag + ADC + I2C + snprintf + DMA transmit) |
-
-> **Tip:** Before regenerating, back up your working `main.c`. Diff it against the new one to see exactly what CubeMX changed.
-
 ## AD8232 Evaluation Board Wiring
 
 | AD8232 Board Pin | Connect To | Notes |
