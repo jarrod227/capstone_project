@@ -310,6 +310,53 @@ The filter will converge on the true bias, but the first ~6s will show noticeabl
 
 In our system, both are used together: static calibration provides the initial estimate, the Kalman filter tracks drift from there.
 
+## Connection to State-Space Controller
+
+The Kalman filter sits **upstream of the state-space controller** in the signal pipeline. Its output replaces the raw gyro reading as the input `u[k]` to the state equation.
+
+### Signal Pipeline
+
+```
+Raw gyro z[k]
+      │
+      ▼
+GyroKalmanFilter3Axis.update(gx, gy, gz)
+      │  estimates true angular velocity ω̂[k] for each axis
+      │  continuously removes drifting bias b[k]
+      ▼
+Corrected (gx, gy, gz) = (ω̂_x[k], ω̂_y[k], ω̂_z[k])
+      │
+      ▼
+StateSpaceController._compute_cursor_move(gx, gy, ...)
+      │  constructs input vector:
+      │    u[k] = [ω̂_y[k], ω̂_x[k]]   (gy → screen X, gx → screen Y)
+      │
+      ▼
+state[k+1] = A · state[k] + B · u[k]
+```
+
+### What This Means
+
+At every timestep `k`, the state-space equation is:
+
+```
+state[k+1] = A · state[k] + B · u[k]
+```
+
+Without the Kalman filter, `u[k]` would contain the raw gyro reading `z[k] = ω[k] + b[k] + v[k]`. The bias `b[k]` would accumulate through the B matrix into velocity, causing the cursor to drift in a fixed direction even when the head is still.
+
+With the Kalman filter, `u[k]` uses the estimated true angular velocity `ω̂[k]`, with bias removed. The state-space A and B matrices are unchanged — only the quality of `u[k]` improves.
+
+### Responsibility Split
+
+| Component | Responsibility |
+|-----------|---------------|
+| Kalman filter | Removes sensor bias and noise from `u[k]` |
+| State-space A matrix | Adds inertia via velocity retention (`d = 0.95`) |
+| State-space B matrix | Scales `u[k]` into velocity change (`s = 0.12`) |
+
+The two models are independent: the Kalman filter operates entirely on gyro measurements and has no knowledge of cursor position or velocity. The state-space controller has no knowledge of bias — it trusts that its input is already clean.
+
 ## Implementation Reference
 
-See [`python/eog_cursor/signal_processing.py`](../python/eog_cursor/signal_processing.py), classes `GyroKalmanFilter` (single axis) and `GyroKalmanFilter3Axis` (convenience wrapper). Parameters in [`python/eog_cursor/config.py`](../python/eog_cursor/config.py).
+See [`python/eog_cursor/signal_processing.py`](../python/eog_cursor/signal_processing.py), classes `GyroKalmanFilter` (single axis) and `GyroKalmanFilter3Axis` (convenience wrapper). Parameters in [`python/eog_cursor/config.py`](../python/eog_cursor/config.py). Pipeline wiring is in [`python/main.py`](../python/main.py), function `run_control_loop()`.
