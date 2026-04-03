@@ -59,16 +59,14 @@ Requires a graphical desktop (Windows / macOS / Linux with X11) for cursor contr
 
 ```bash
 pip install -r requirements.txt
-cd python
-python -m scripts.generate_demo_data --output ../data/raw   # ~10s, deterministic (seed=42)
-python -m scripts.train_model --data ../data/raw             # ~15s, ~98% CV accuracy
+python python/scripts/generate_demo_data.py --output data/raw   # ~10s, deterministic (seed=42)
+python python/scripts/train_model.py --data data/raw             # ~15s, ~98% CV accuracy
 ```
 
 ### 2. Collect Training Data (optional, requires hardware)
 
 ```bash
-cd python
-python -m scripts.collect_data --port COM4
+python python/scripts/collect_data.py --port COM4
 ```
 
 Label keys during recording: `0`=idle `1`=blink `2`=double_blink `3`=triple_blink `4`=long_blink `5`=look_up `6`=look_down `7`=look_left `8`=look_right, `ESC`=stop and save.
@@ -79,13 +77,13 @@ Procedure: press label key **~1 s before** the gesture → perform gesture → w
 
 ### 3. Run
 
-3 modes × 3 data sources — any combination works (`cd python` first):
+3 modes × 3 data sources — any combination works (run from project root):
 
 | | `--replay CSV` (offline) | `--simulate` (no hardware) | `--port COM4` (hardware) |
 |---|---|---|---|
-| **threshold** | `python main.py --replay ../data/raw/demo_replay.csv` | `python main.py --simulate` | `python main.py --port COM4` |
-| **statespace** | `python main.py --replay ../data/raw/demo_replay.csv --mode statespace` | `python main.py --simulate --mode statespace` | `python main.py --port COM4 --mode statespace` |
-| **ml** | `python main.py --replay ../data/raw/demo_replay.csv --mode ml` | `python main.py --simulate --mode ml` | `python main.py --port COM4 --mode ml` |
+| **threshold** | `python python/main.py --replay data/raw/demo_replay.csv` | `python python/main.py --simulate` | `python python/main.py --port COM4` |
+| **statespace** | `python python/main.py --replay data/raw/demo_replay.csv --mode statespace` | `python python/main.py --simulate --mode statespace` | `python python/main.py --port COM4 --mode statespace` |
+| **ml** | `python python/main.py --replay data/raw/demo_replay.csv --mode ml` | `python python/main.py --simulate --mode ml` | `python python/main.py --port COM4 --mode ml` |
 
 > Default mode is `threshold`. Hardware port: Windows `COM4`, Linux `/dev/ttyACM0` (Nucleo).
 
@@ -96,9 +94,9 @@ Procedure: press label key **~1 s before** the gesture → perform gesture → w
 Keyboard overlay controls: Space(x2)=left-click, Space(hold)=right-click, Space(x3)=double-click, U=look-up (scroll fusion with hardware IMU), D=look-down (scroll fusion with hardware IMU), L=look-left (freezes cursor, enables nod from hardware IMU), R=look-right (freezes cursor, enables nod from hardware IMU).
 
 ```bash
-python main.py --port COM4 --mode threshold   --kb
-python main.py --port COM4 --mode statespace  --kb
-python main.py --port COM4 --mode ml          --kb
+python python/main.py --port COM4 --mode threshold   --kb
+python python/main.py --port COM4 --mode statespace  --kb
+python python/main.py --port COM4 --mode ml          --kb
 ```
 
 > **Note:** The simulator generates square-wave EOG signals (instant jumps), which differ from the smooth waveforms used to train the SVM. As a result, `--mode ml` with `--simulate` cannot classify EOG events reliably. Use `--replay CSV` or real hardware for ML mode.
