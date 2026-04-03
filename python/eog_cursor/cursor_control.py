@@ -77,6 +77,10 @@ class _BaseController:
         # "IDLE" | "SCROLL_UP_READY" | "SCROLL_DOWN_READY"
         self.scroll_state = "IDLE"
 
+        # Nav ready state: horizontal gaze locks cursor before head turn confirms
+        # "IDLE" | "NAV_LEFT_READY" | "NAV_RIGHT_READY"
+        self.nav_state = "IDLE"
+
     def _compute_cursor_move(self, gx, gy, any_action, gui):
         """Compute and apply cursor movement. Subclasses must override."""
         raise NotImplementedError
@@ -176,21 +180,31 @@ class _BaseController:
             gui.moveTo(screen_w // 2, screen_h // 2, _pause=False)
             logger.info("Double nod → center cursor")
 
-        # --- 5. Browser back/forward: horizontal gaze + head turn fusion ---
+        # --- 5. Browser back/forward: two-step state machine ---
+        # Step 1: horizontal gaze locks cursor into NAV_LEFT_READY or NAV_RIGHT_READY.
+        # Step 2: only while locked, head turn triggers browser back/forward.
+        # Eyes returning to neutral resets to IDLE.
         horiz_event = self.horizontal_gaze_detector.update(eog_h, now)
         if horiz_event == EOGEvent.NONE:
             horiz_event = kb_horiz  # keyboard fallback
-          
-        if horiz_event == EOGEvent.LOOK_LEFT and gy < -self.deadzone:
+
+        if horiz_event == EOGEvent.LOOK_LEFT:
+            self.nav_state = "NAV_LEFT_READY"
+        elif horiz_event == EOGEvent.LOOK_RIGHT:
+            self.nav_state = "NAV_RIGHT_READY"
+        else:
+            self.nav_state = "IDLE"
+
+        if self.nav_state == "NAV_LEFT_READY" and gy < -self.deadzone:
             if now - self.last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN:
                 gui.hotkey('alt', 'left', _pause=False)
                 self.last_nav_time = now
-                logger.info("Back (eye left + head left)")
-        elif horiz_event == EOGEvent.LOOK_RIGHT and gy > self.deadzone:
+                logger.info("Back (nav ready + head left)")
+        elif self.nav_state == "NAV_RIGHT_READY" and gy > self.deadzone:
             if now - self.last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN:
                 gui.hotkey('alt', 'right', _pause=False)
                 self.last_nav_time = now
-                logger.info("Forward (eye right + head right)")
+                logger.info("Forward (nav ready + head right)")
 
     def reset(self):
         """Reset all detector state."""
@@ -202,7 +216,8 @@ class _BaseController:
         self.last_nav_time = 0.0
         self.last_nod_time = 0.0
         self.scroll_state = "IDLE"
-
+        self.nav_state = "IDLE"
+      
 
 class ThresholdController(_BaseController):
     """
