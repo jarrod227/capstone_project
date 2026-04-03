@@ -110,7 +110,8 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │     eog_v → LONG_BLINK   → right click
                │
                ├─→ GazeDetector (event_detector.py)
-               │     eog_v + gx fusion → scroll up/down
+               │     eog_v → SCROLL_UP_READY / SCROLL_DOWN_READY state
+               │     ⚡ Two-step: eye gaze locks state, head tilt triggers scroll
                │
                ├─→ HorizontalGazeDetector (event_detector.py)
                │     eog_h + gy fusion → browser back/forward
@@ -124,6 +125,8 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
 ```
 
 **Cursor freeze mechanic:** Looking left or right (eog_h beyond threshold) freezes the cursor. The double nod detector is only active while the cursor is frozen — this prevents accidental triggers during normal head movement and eliminates cursor drift during gestures.
+
+**Scroll ready mechanic:** Looking up or down (eog_v beyond threshold) enters `SCROLL_UP_READY` or `SCROLL_DOWN_READY` state. The cursor freezes and only head tilt (gx) can trigger scrolling. Eyes returning to neutral reset to `IDLE`. This two-step design prevents missed triggers caused by imperfect eye-head timing.
 
 **Files:** `main.py` → `config.py` → `signal_processing.py` → `cursor_control.py` → `event_detector.py`
 
@@ -147,7 +150,8 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │     eog_v → LONG_BLINK   → right click
                │
                ├─→ GazeDetector (event_detector.py)
-               │     eog_v + gx fusion → scroll up/down
+               │     eog_v → SCROLL_UP_READY / SCROLL_DOWN_READY state
+               │     ⚡ Two-step: eye gaze locks state, head tilt triggers scroll
                │
                ├─→ HorizontalGazeDetector (event_detector.py)
                │     eog_h + gy fusion → browser back/forward
@@ -190,8 +194,9 @@ main.py ─→ run_ml_mode() (main.py)
                │
                ├─→ Sensor Fusion (in main.py)
                │     prediction + gx/gy inline deadzone check
-               │     look_up + gx < -deadzone  → scroll up
-               │     look_down + gx > deadzone → scroll down
+               │     look_up   → SCROLL_UP_READY; gx < -deadzone → scroll up
+               │     look_down → SCROLL_DOWN_READY; gx > deadzone → scroll down
+               │     (scroll uses two-step state machine: eye locks, head triggers)
                │     look_left + gy < -deadzone → browser back
                │     look_right + gy > deadzone → browser forward
                │     double_blink → left click (no fusion needed)
