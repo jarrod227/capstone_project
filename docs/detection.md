@@ -170,12 +170,43 @@ ADC value
 
 The `HorizontalGazeDetector` operates on the eog_h channel with similar logic but a longer minimum duration (150ms vs 100ms) to reduce false triggers from eye saccades.
 
-**Important**: Horizontal gaze events alone do not trigger browser navigation. They are fused with IMU head turn signals in `cursor_control.py` — both eye gaze AND head motion must agree simultaneously.
+**Important**: Horizontal gaze events alone do not trigger browser navigation. They lock the system into a nav-ready state; head turn then confirms the action (two-step, same pattern as scroll).
+
+### Nav Ready State Machine
+
+| State | Condition | Cursor |
+|-------|-----------|--------|
+| `IDLE` | Eyes in neutral zone | Moves normally |
+| `NAV_LEFT_READY` | eog_h in look-left zone (sustained >150ms) | Frozen |
+| `NAV_RIGHT_READY` | eog_h in look-right zone (sustained >150ms) | Frozen |
+
+### Transitions
+
+```
+Eyes neutral
+    │
+    ▼
+  IDLE ──── look left (eog_h < 1600) ────► NAV_LEFT_READY
+    │                                           │
+    │                                           │ head turns left (gy < -300)
+    │                                           │     → browser back fires
+    │                                           │ eyes return to neutral
+    │                                           ▼
+    └──── look right (eog_h > 2400) ──► NAV_RIGHT_READY
+                                                │
+                                                │ head turns right (gy > 300)
+                                                │     → browser forward fires
+                                                │ eyes return to neutral
+                                                ▼
+                                              IDLE
+```
 
 | Action | Eye Condition | Head Condition |
 |--------|--------------|----------------|
-| Browser Back | eog_h < 1600 for >150ms | gy < -300 (head turning left) |
-| Browser Forward | eog_h > 2400 for >150ms | gy > 300 (head turning right) |
+| Browser Back | eog_h < 1600 for >150ms (NAV_LEFT_READY) | gy < -300 (head turning left) |
+| Browser Forward | eog_h > 2400 for >150ms (NAV_RIGHT_READY) | gy > 300 (head turning right) |
+
+Implemented via `nav_state` in `_BaseController` (threshold/statespace modes) and `ml_nav_state` in `run_ml_mode()` (ML mode).
 
 ## Vertical Gaze — Scroll Ready State Machine
 
