@@ -131,6 +131,10 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
     last_nav_time = 0.0
     last_prediction = "idle"  # Remember last ML result for continuous suppression
 
+    # Scroll ready state: ML prediction locks into scroll mode before head confirms.
+    # "IDLE" | "SCROLL_UP_READY" | "SCROLL_DOWN_READY"
+    ml_scroll_state = "IDLE"
+
     # Keyboard → ML prediction mapping
     _KB_EVENT_TO_PREDICTION = {
         EOGEvent.DOUBLE_BLINK: "double_blink",
@@ -192,19 +196,27 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
                     action = "right click"
                     last_blink_time = now
 
-            # Scroll fusion: ML detects eye gaze + check head tilt
-            elif prediction == "look_up" and gx < -deadzone:
-                if now - last_scroll_time > config.SCROLL_COOLDOWN:
-                    amount = max(1, int(abs(gx) / deadzone * config.SCROLL_AMOUNT))
-                    pyautogui.scroll(amount, _pause=False)
-                    action = f"scroll up {amount} lines (eye + head fusion)"
-                    last_scroll_time = now
-            elif prediction == "look_down" and gx > deadzone:
-                if now - last_scroll_time > config.SCROLL_COOLDOWN:
-                    amount = max(1, int(abs(gx) / deadzone * config.SCROLL_AMOUNT))
-                    pyautogui.scroll(-amount, _pause=False)
-                    action = f"scroll down {amount} lines (eye + head fusion)"
-                    last_scroll_time = now
+            # Scroll: two-step state machine (mirrors _BaseController logic)
+            # Step 1: ML prediction locks into SCROLL_UP/DOWN_READY, cursor frozen.
+            # Step 2: only while locked, head tilt triggers scroll.
+            elif prediction in ("look_up", "look_down"):
+                if prediction == "look_up":
+                    ml_scroll_state = "SCROLL_UP_READY"
+                else:
+                    ml_scroll_state = "SCROLL_DOWN_READY"
+
+                if ml_scroll_state == "SCROLL_UP_READY" and gx < -deadzone:
+                    if now - last_scroll_time > config.SCROLL_COOLDOWN:
+                        amount = max(1, int(abs(gx) / deadzone * config.SCROLL_AMOUNT))
+                        pyautogui.scroll(amount, _pause=False)
+                        action = f"scroll up {amount} lines (scroll ready + head up)"
+                        last_scroll_time = now
+                elif ml_scroll_state == "SCROLL_DOWN_READY" and gx > deadzone:
+                    if now - last_scroll_time > config.SCROLL_COOLDOWN:
+                        amount = max(1, int(abs(gx) / deadzone * config.SCROLL_AMOUNT))
+                        pyautogui.scroll(-amount, _pause=False)
+                        action = f"scroll down {amount} lines (scroll ready + head down)"
+                        last_scroll_time = now
 
             # Back/forward fusion: ML detects eye gaze + check head turn
             elif prediction == "look_left" and gy < -deadzone:
@@ -220,6 +232,10 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
 
             if action:
                 logging.getLogger(__name__).info(f"ML: {prediction} -> {action}")
+
+        # Reset scroll ready state when ML stops predicting scroll
+        if last_prediction not in ("look_up", "look_down"):
+            ml_scroll_state = "IDLE"
 
         # IMU controls cursor via state-space controller.
         # Use last_prediction (not prediction) for suppression — prediction is
