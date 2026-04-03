@@ -159,7 +159,8 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │     ⚡ Two-step: eye gaze locks state, head tilt triggers scroll
                │
                ├─→ HorizontalGazeDetector (event_detector.py)
-               │     eog_h + gy fusion → browser back/forward
+               │     eog_h → NAV_LEFT_READY / NAV_RIGHT_READY state
+               │     ⚡ Two-step: eye gaze locks state, head turn triggers nav
                │
                └─→ DoubleNodDetector (event_detector.py)
                      gx → center cursor (two quick nods)
@@ -202,8 +203,9 @@ main.py ─→ run_ml_mode() (main.py)
                │     look_up   → SCROLL_UP_READY; gx < -deadzone → scroll up
                │     look_down → SCROLL_DOWN_READY; gx > deadzone → scroll down
                │     (scroll uses two-step state machine: eye locks, head triggers)
-               │     look_left + gy < -deadzone → browser back
-               │     look_right + gy > deadzone → browser forward
+               │     look_left  → NAV_LEFT_READY; gy < -deadzone → browser back
+               │     look_right → NAV_RIGHT_READY; gy > deadzone → browser forward
+               │     (nav uses two-step state machine: eye locks, head triggers)
                │     double_blink → left click (no fusion needed)
                │     triple_blink → double click (no fusion needed)
                │     long_blink → right click (no fusion needed)
