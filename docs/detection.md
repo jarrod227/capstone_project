@@ -177,6 +177,43 @@ The `HorizontalGazeDetector` operates on the eog_h channel with similar logic bu
 | Browser Back | eog_h < 1600 for >150ms | gy < -300 (head turning left) |
 | Browser Forward | eog_h > 2400 for >150ms | gy > 300 (head turning right) |
 
+## Vertical Gaze — Scroll Ready State Machine
+
+Scroll uses a **two-step state machine** rather than a simultaneous eye+head check. This makes scroll reliable when eye and head movements are not perfectly synchronised.
+
+### States
+
+| State | Condition | Cursor |
+|-------|-----------|--------|
+| `IDLE` | Eyes in neutral zone | Moves normally |
+| `SCROLL_UP_READY` | eog_v in look-up zone (sustained >100ms) | Frozen |
+| `SCROLL_DOWN_READY` | eog_v in look-down zone (sustained >100ms) | Frozen |
+
+### Transitions
+
+```
+Eyes neutral
+    │
+    ▼
+  IDLE ──── look up (eog_v > 2400) ────► SCROLL_UP_READY
+    │                                          │
+    │                                          │ head tilts up (gx < -300)
+    │                                          │     → scroll up fires
+    │                                          │ eyes return to neutral
+    │                                          ▼
+    └──── look down (eog_v < 1600) ──► SCROLL_DOWN_READY
+                                               │
+                                               │ head tilts down (gx > 300)
+                                               │     → scroll down fires
+                                               │ eyes return to neutral
+                                               ▼
+                                             IDLE
+```
+
+**Workflow:** Look up/down (cursor freezes, enters ready state) → tilt head (scroll fires, repeats while in state) → return eyes to neutral (exits state, cursor unfreezes).
+
+While in `SCROLL_UP_READY` or `SCROLL_DOWN_READY`, no other cursor actions are possible — blink detection still runs, but cursor movement and navigation are suppressed. This is implemented via `scroll_state` in `_BaseController` (threshold/statespace modes) and `ml_scroll_state` in `run_ml_mode()` (ML mode).
+
 ## ML-Based Detection (Alternative)
 
 In `--mode ml`, the SVM classifier replaces the threshold-based state machine. Instead of analyzing edges and durations in real time, it extracts 20 features from a 1.0s sliding window of both EOG channels and classifies the waveform pattern:
