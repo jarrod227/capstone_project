@@ -114,7 +114,8 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
                │     ⚡ Two-step: eye gaze locks state, head tilt triggers scroll
                │
                ├─→ HorizontalGazeDetector (event_detector.py)
-               │     eog_h + gy fusion → browser back/forward
+               │     eog_h → NAV_LEFT_READY / NAV_RIGHT_READY state
+               │     ⚡ Two-step: eye gaze locks state, head turn triggers nav
                │
                └─→ DoubleNodDetector (event_detector.py)
                      gx → center cursor (two quick nods)
@@ -126,7 +127,11 @@ main.py ─→ EOGLowPassFilter (signal_processing.py)
 
 **Cursor freeze mechanic:** Looking left or right (eog_h beyond threshold) freezes the cursor. The double nod detector is only active while the cursor is frozen — this prevents accidental triggers during normal head movement and eliminates cursor drift during gestures.
 
-**Scroll ready mechanic:** Looking up or down (eog_v beyond threshold) enters `SCROLL_UP_READY` or `SCROLL_DOWN_READY` state. The cursor freezes and only head tilt (gx) can trigger scrolling. Eyes returning to neutral reset to `IDLE`. This two-step design prevents missed triggers caused by imperfect eye-head timing.
+**Scroll ready mechanic:** Looking up or down (eog_v beyond threshold) enters `SCROLL_UP_READY` or `SCROLL_DOWN_READY` state. The cursor freezes and only head tilt (gx) can trigger scrolling. Eyes returning to neutral reset to `IDLE`.
+
+**Nav ready mechanic:** Looking left or right (eog_h beyond threshold) enters `NAV_LEFT_READY` or `NAV_RIGHT_READY` state. The cursor freezes and only head turn (gy) can trigger browser back/forward. Eyes returning to neutral reset to `IDLE`.
+
+Both mechanics use the same two-step design: eye gaze locks the state, head motion confirms the action.
 
 **Files:** `main.py` → `config.py` → `signal_processing.py` → `cursor_control.py` → `event_detector.py`
 
