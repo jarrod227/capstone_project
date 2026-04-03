@@ -73,6 +73,10 @@ class _BaseController:
         self.last_nav_time = 0.0
         self.last_nod_time = 0.0
 
+        # Scroll ready state: eyes lock cursor into scroll mode before head confirms
+        # "IDLE" | "SCROLL_UP_READY" | "SCROLL_DOWN_READY"
+        self.scroll_state = "IDLE"
+
     def _compute_cursor_move(self, gx, gy, any_action, gui):
         """Compute and apply cursor movement. Subclasses must override."""
         raise NotImplementedError
@@ -136,23 +140,33 @@ class _BaseController:
             gui.click(button='right', _pause=False)
             logger.info("Long blink → right click")
 
-        # --- 3. Scroll: eye gaze + head tilt fusion ---
+        # --- 3. Scroll: two-step state machine ---
+        # Step 1: eye gaze locks cursor into SCROLL_UP_READY or SCROLL_DOWN_READY.
+        # Step 2: only while locked, head tilt triggers the actual scroll.
+        # Eyes returning to neutral resets to IDLE.
         gaze_event = self.gaze_detector.update(eog_v, now)
         if gaze_event == EOGEvent.NONE:
             gaze_event = kb_gaze  # keyboard fallback
-          
-        if gaze_event == EOGEvent.LOOK_UP and gx < -self.deadzone:
+
+        if gaze_event == EOGEvent.LOOK_UP:
+            self.scroll_state = "SCROLL_UP_READY"
+        elif gaze_event == EOGEvent.LOOK_DOWN:
+            self.scroll_state = "SCROLL_DOWN_READY"
+        else:
+            self.scroll_state = "IDLE"
+
+        if self.scroll_state == "SCROLL_UP_READY" and gx < -self.deadzone:
             if now - self.last_scroll_time > config.SCROLL_COOLDOWN:
                 amount = max(1, int(abs(gx) / self.deadzone * config.SCROLL_AMOUNT))
                 gui.scroll(amount, _pause=False)
                 self.last_scroll_time = now
-                logger.info(f"Scroll up {amount} lines (eye up + head up)")
-        elif gaze_event == EOGEvent.LOOK_DOWN and gx > self.deadzone:
+                logger.info(f"Scroll up {amount} lines (scroll ready + head up)")
+        elif self.scroll_state == "SCROLL_DOWN_READY" and gx > self.deadzone:
             if now - self.last_scroll_time > config.SCROLL_COOLDOWN:
                 amount = max(1, int(abs(gx) / self.deadzone * config.SCROLL_AMOUNT))
                 gui.scroll(-amount, _pause=False)
                 self.last_scroll_time = now
-                logger.info(f"Scroll down {amount} lines (eye down + head down)")
+                logger.info(f"Scroll down {amount} lines (scroll ready + head down)")
 
         # --- 4. Center cursor: double head nod (only while cursor frozen) ---
         nod_event = self.nod_detector.update(gx, now, cursor_frozen=cursor_frozen)
@@ -187,6 +201,7 @@ class _BaseController:
         self.last_scroll_time = 0.0
         self.last_nav_time = 0.0
         self.last_nod_time = 0.0
+        self.scroll_state = "IDLE"
 
 
 class ThresholdController(_BaseController):
