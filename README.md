@@ -39,11 +39,15 @@ A hands-free computer cursor control system using **dual-channel EOG** for eye e
 | **Double Click** | Triple Blink (three rapid blinks) | Discrete |
 | **Center Cursor** | Look Left/Right + Double Head Nod (eog_h + gyro_x) | Freeze + Gesture |
 | **Scroll Up/Down** | Eye Up/Down (enters scroll-ready) → Head Up/Down (eog_v + gx) | Fusion (2-step) |
-| **Browser Back/Fwd** | Eye Left/Right + Head Left/Right (eog_h + gy) | Fusion |
+| **Browser Back/Fwd** | Eye Left/Right (enters nav-ready) → Head Left/Right (eog_h + gy) | Fusion (2-step) |
 
 **Cursor freeze mechanic:** Looking left or right (horizontal EOG) freezes the cursor. While frozen, head nods center the cursor on screen. This prevents accidental triggers during normal head movement and eliminates cursor drift during gestures.
 
-**Scroll ready mechanic:** Looking up or down (vertical EOG) locks the cursor into a scroll-ready state — the cursor freezes and only head tilt (up/down) can trigger scrolling. No other cursor actions are possible while in scroll-ready. Eyes returning to neutral exit the state. This two-step design prevents missed scroll triggers caused by imperfect eye-head timing synchronization.
+**Scroll ready mechanic:** Looking up or down (vertical EOG) locks the cursor into a scroll-ready state — the cursor freezes and only head tilt (up/down) can trigger scrolling. Eyes returning to neutral exit the state.
+
+**Nav ready mechanic:** Looking left or right (horizontal EOG) locks the cursor into a nav-ready state — the cursor freezes and only head turn (left/right) can trigger browser back/forward. Eyes returning to neutral exit the state.
+
+Both scroll and nav use the same two-step design: eye gaze enters the ready state, head motion confirms the action. This prevents missed triggers caused by imperfect eye-head timing synchronization.
 
 Blink detection uses a 4-state machine analyzing full spike waveforms, not simple thresholds. See [docs/detection.md](docs/detection.md) for signal zones, state diagrams, and parameters.
 
