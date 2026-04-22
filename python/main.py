@@ -129,6 +129,10 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
     last_blink_time = 0.0
     last_scroll_time = 0.0
     last_nav_time = 0.0
+    last_action_time = 0.0
+    cursor_unfreeze_time = 0.0
+    last_look_up_time = 0.0
+    last_look_down_time = 0.0
     last_prediction = "idle"  # Remember last ML result for continuous suppression
 
     # Scroll ready state: ML prediction locks into scroll mode before head confirms.
@@ -185,20 +189,26 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
             action = None
 
             if prediction == "double_blink":
-                if now - last_blink_time > config.DOUBLE_BLINK_COOLDOWN:
+                if now - last_blink_time > config.DOUBLE_BLINK_COOLDOWN and now - last_action_time > 0.5:
                     pyautogui.click(_pause=False)
                     action = "left click"
                     last_blink_time = now
+                    last_action_time = now
+                    cursor_unfreeze_time = now + 0.2
             elif prediction == "triple_blink":
-                if now - last_blink_time > config.TRIPLE_BLINK_COOLDOWN:
+                if now - last_blink_time > config.TRIPLE_BLINK_COOLDOWN and now - last_action_time > 0.5:
                     pyautogui.doubleClick(_pause=False)
                     action = "double click"
                     last_blink_time = now
+                    last_action_time = now
+                    cursor_unfreeze_time = now + 0.2
             elif prediction == "long_blink":
-                if now - last_blink_time > config.LONG_BLINK_COOLDOWN:
+                if now - last_blink_time > config.LONG_BLINK_COOLDOWN and now - last_action_time > 0.5:
                     pyautogui.click(button='right', _pause=False)
                     action = "right click"
                     last_blink_time = now
+                    last_action_time = now
+                    cursor_unfreeze_time = now + 0.2
 
             # Scroll: two-step state machine (mirrors _BaseController logic)
             # Step 1: ML prediction locks into SCROLL_UP/DOWN_READY, cursor frozen.
@@ -206,21 +216,29 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
             elif prediction in ("look_up", "look_down"):
                 if prediction == "look_up":
                     ml_scroll_state = "SCROLL_UP_READY"
+                    last_look_up_time = now
+                    last_look_down_time = 0  # clear the grace period of "down"
                 else:
                     ml_scroll_state = "SCROLL_DOWN_READY"
+                    last_look_down_time = now
+                    last_look_up_time = 0  # clear the grace period of "up"
 
                 if ml_scroll_state == "SCROLL_UP_READY" and gx < -deadzone:
-                    if now - last_scroll_time > config.SCROLL_COOLDOWN:
+                    if now - last_scroll_time > config.SCROLL_COOLDOWN and now - last_action_time > 0.5:
                         amount = max(1, int(abs(gx) / deadzone * config.SCROLL_AMOUNT))
                         pyautogui.scroll(amount, _pause=False)
                         action = f"scroll up {amount} lines (scroll ready + head up)"
                         last_scroll_time = now
+                        last_action_time = now
+                        cursor_unfreeze_time = now + 0.2
                 elif ml_scroll_state == "SCROLL_DOWN_READY" and gx > deadzone:
-                    if now - last_scroll_time > config.SCROLL_COOLDOWN:
+                    if now - last_scroll_time > config.SCROLL_COOLDOWN and now - last_action_time > 0.5:
                         amount = max(1, int(abs(gx) / deadzone * config.SCROLL_AMOUNT))
                         pyautogui.scroll(-amount, _pause=False)
                         action = f"scroll down {amount} lines (scroll ready + head down)"
                         last_scroll_time = now
+                        last_action_time = now
+                        cursor_unfreeze_time = now + 0.2
 
             # Back/forward: two-step state machine (mirrors _BaseController logic)
             # Step 1: ML prediction locks into NAV_LEFT/RIGHT_READY, cursor frozen.
@@ -232,22 +250,29 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
                     ml_nav_state = "NAV_RIGHT_READY"
 
                 if ml_nav_state == "NAV_LEFT_READY" and gy < -deadzone:
-                    if now - last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN:
+                    if now - last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN and now - last_action_time > 0.5:
                         pyautogui.hotkey('alt', 'left', _pause=False)
                         action = "browser back (nav ready + head left)"
                         last_nav_time = now
+                        last_action_time = now
+                        cursor_unfreeze_time = now + 0.2
                 elif ml_nav_state == "NAV_RIGHT_READY" and gy > deadzone:
-                    if now - last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN:
+                    if now - last_nav_time > config.HORIZONTAL_GAZE_COOLDOWN and now - last_action_time > 0.5:
                         pyautogui.hotkey('alt', 'right', _pause=False)
                         action = "browser forward (nav ready + head right)"
                         last_nav_time = now
-
+                        last_action_time = now
+                        cursor_unfreeze_time = now + 0.2
             if action:
                 logging.getLogger(__name__).info(f"ML: {prediction} -> {action}")
 
         # Reset ready states when ML stops predicting the corresponding gaze
         if last_prediction not in ("look_up", "look_down"):
-            ml_scroll_state = "IDLE"
+            if ml_scroll_state == "SCROLL_UP_READY" and now - last_look_up_time > 0.5:
+                ml_scroll_state = "IDLE"
+            elif ml_scroll_state == "SCROLL_DOWN_READY" and now - last_look_down_time > 0.5:
+                ml_scroll_state = "IDLE"
+
         if last_prediction not in ("look_left", "look_right"):
             ml_nav_state = "IDLE"
 
@@ -263,12 +288,12 @@ def run_ml_mode(source, calibrator=None, kalman=None, keyboard_overlay=None):
             # Cursor frozen by override; pass real gx for nod detection
             cursor_gx = gx
             cursor_gy = gy
-        elif last_prediction not in ("idle", "blink"):
+        elif last_prediction not in ("idle", "blink") and now < cursor_unfreeze_time:
             cursor_gx = 0
             cursor_gy = 0
-            # Zero velocity to freeze cursor during action
             controller.state[1] = 0
             controller.state[3] = 0
+
         else:
             cursor_gx = gx
             cursor_gy = gy
