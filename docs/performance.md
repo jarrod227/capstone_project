@@ -68,7 +68,7 @@ triple_blink           0      7           0           0         0          133
 
 ## 3. Action Accuracy
 
-Test each action with real EOG signals. Perform N intentional gestures, count successes and false triggers.
+Test each action with real EOG signals. Each action performed 20 times, successes and false triggers recorded.
 
 | Action | Attempts | Successes | False Positives | Accuracy |
 |--------|----------|-----------|-----------------|----------|
