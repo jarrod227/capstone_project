@@ -7,9 +7,9 @@ A hands-free computer cursor control system using **dual-channel EOG** for eye e
 
 ## Demo
 
-[![IMU Head-Tracking Cursor Control Demo](https://img.youtube.com/vi/Nr9WvFvy-Go/0.jpg)](https://youtube.com/shorts/Nr9WvFvy-Go)
+[![Final Capstone Demo]([https://img.youtube.com/vi/Nr9WvFvy-Go/0.jpg)](https://youtube.com/shorts/Nr9WvFvy-Go](https://youtu.be/H4pCKZaqN2I))
 
-> IMU-only demo: head motion controls cursor movement. EOG channels not yet connected in this video.
+> Final demo.
 
 ## System Overview
 
