@@ -7,7 +7,7 @@ A hands-free computer cursor control system using **dual-channel EOG** for eye e
 
 ## Demo
 
-[![Final Capstone Demo]([https://img.youtube.com/vi/Nr9WvFvy-Go/0.jpg)](https://youtube.com/shorts/Nr9WvFvy-Go](https://youtu.be/H4pCKZaqN2I))
+[![Final Capstone Demo](https://img.youtube.com/vi/H4pCKZaqN2I/0.jpg)](https://www.youtube.com/watch?v=H4pCKZaqN2I)
 
 > Final demo.
 
