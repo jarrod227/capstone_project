@@ -183,11 +183,16 @@ def main():
 
     pipeline = make_pipeline(
         StandardScaler(),
-        SVC(kernel="rbf", C=1000, gamma="scale", class_weight="balanced")
+        SVC(kernel="rbf", C=100, gamma="scale", class_weight="balanced")
     )
     scores = cross_val_score(pipeline, X, y, cv=cv, scoring="accuracy")
     print(f"Accuracy: {scores.mean():.3f} (+/- {scores.std():.3f})")
     print(f"Per-fold: {[f'{s:.3f}' for s in scores]}")
+
+    from sklearn.model_selection import cross_val_predict
+    y_pred_cv = cross_val_predict(pipeline, X, y, cv=cv)
+    print("\nCV per-class report:")
+    print(classification_report(y, y_pred_cv))
 
     # Train final model on all data
     print(f"\n{'='*60}")
