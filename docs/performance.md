@@ -75,16 +75,18 @@ Test each action with real EOG signals. Perform N intentional gestures, count su
 | Double blink → left click | 20 | 15 | 2 | 75% |
 | Triple blink → double click | 20 | 14 | 1 | 70% |
 | Long blink → right click | 20 | 16 | 1 | 80% |
-| Center cursor (look L/R + double nod) | 20 | 15 | 0 | 75% |
+| Center cursor (look L/R + double nod) | N/A | N/A | N/A | N/A |
 | Scroll up (eye up + head up) | 20 | 15 | 1 | 75% |
 | Scroll down (eye down + head down) | 20 | 15 | 1 | 75% |
-| Browser back (eye left + head left) | 20 | 16 | 0 | 80% |
-| Browser forward (eye right + head right) | 20 | 16 | 0 | 80% |
+| Browser back (eye left + head left) | N/A | N/A | N/A | N/A |
+| Browser forward (eye right + head right) | N/A | N/A | N/A | N/A |
+
+> N/A actions require `look_left` / `look_right` EOG classification, which were not included in the current training dataset.
 | Cursor move (head motion) | 20 | 18 | 0 | 90% |
 
 ---
 
-## 5. Robustness
+## 4. Robustness
 
 | Test | Result | Notes |
 |------|--------|-------|
