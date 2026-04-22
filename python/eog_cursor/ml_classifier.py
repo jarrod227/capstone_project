@@ -119,7 +119,7 @@ def train_model(X: np.ndarray, y: np.ndarray,
     # Train SVM with RBF kernel
     model = SVC(
         kernel="rbf",
-        C=10.0,
+        C=100,
         gamma="scale",
         class_weight="balanced",  # Handle imbalanced classes
         probability=True           # Enable confidence scores
