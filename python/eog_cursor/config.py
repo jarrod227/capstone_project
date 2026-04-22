@@ -31,7 +31,7 @@ EOG_LOWPASS_ORDER = 4         # Butterworth filter order
 EOG_LOWPASS_ENABLED = True    # Always on — no effect on clean data, removes noise on hardware
 
 # --- IMU Deadzone ---
-GYRO_DEADZONE = 300           # Raw gyro threshold (below = noise, ignore after bias removal)
+GYRO_DEADZONE = 100           # Raw gyro threshold (below = noise, ignore after bias removal)
 
 # --- IMU Calibration (startup bias removal) ---
 GYRO_CALIBRATION_SAMPLES = 400  # Number of samples for bias estimation (2s at 200Hz)
@@ -48,8 +48,8 @@ KALMAN_R = 500.0           # Measurement noise (gyro sensor noise variance)
 CURSOR_SENSITIVITY = 0.01     # Gyro-to-pixel scaling factor
 
 # --- Cursor Control (State-Space Model) ---
-SS_VELOCITY_RETAIN = 0.95     # Velocity retention per step (0.8=quick stop, 0.99=long glide)
-SS_SENSITIVITY = 0.12         # Input gain (tuned for ~1800 px/s full-speed traversal)
+SS_VELOCITY_RETAIN = 0.92     # Velocity retention per step (0.8=quick stop, 0.99=long glide)
+SS_SENSITIVITY = 0.20         # Input gain (tuned for ~1800 px/s full-speed traversal)
 SS_DT = SAMPLE_PERIOD         # Time step for state equations
 
 # --- Blink Detection (vertical EOG) ---
@@ -60,7 +60,7 @@ BLINK_MAX_DURATION = 0.25     # seconds - max duration for a normal blink
 
 # --- Double Blink → Left Click ---
 DOUBLE_BLINK_WINDOW = 0.6     # seconds - two blinks within this window = double blink
-DOUBLE_BLINK_COOLDOWN = 0.8   # seconds - prevent re-trigger after double blink
+DOUBLE_BLINK_COOLDOWN = 1.0   # seconds - prevent re-trigger after double blink
 
 # --- Triple Blink → Double Click ---
 TRIPLE_BLINK_WINDOW = 0.6     # seconds - third blink must start within this after second blink ends
